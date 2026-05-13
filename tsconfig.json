@@ -1,0 +1,30 @@
+{
+  "extends": "create-lichtblick-extension/tsconfig/tsconfig.json",
+  "include": ["./src/**/*", "tests/**/*.ts"],
+  "exclude": ["./src/**/*.test.ts"],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": ".",
+    "outDir": "./dist",
+    "lib": ["dom"],
+    "composite": false,
+    "declaration": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@utils/*": ["./src/utils/*"],
+      "@converters": ["./src/converters/index.ts"],
+      "@converters/*": ["./src/converters/*"],
+      "@features/*": ["./src/features/*"],
+      "@parser/*": ["./src/parser/*"],
+      "@geometry/*": ["./src/geometry/*"],
+      "@config/*": ["./src/config/*"],
+      "@/*": ["./src/*"]
+    }
+  }
+}
