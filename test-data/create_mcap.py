@@ -1,20 +1,33 @@
 #!/usr/bin/env python3
 """Create an MCAP file containing an OpenDRIVE map for the asam-opendrive-converter.
 
-The output MCAP has a single channel "ground_truth_map" with schema "osi3.MapAsamOpenDrive"
-(protobuf encoding). This is the format expected by the Lichtblick extension.
+The output MCAP has:
+  - "ground_truth_map" channel (osi3.MapAsamOpenDrive) — static map, single message
+  - "ground_truth" channel (osi3.GroundTruth) — timeline messages for playback
 
-Usage:
+This matches the OMEGA PRIME recording format expected by Lichtblick.
+
+Preferred method (using omega-prime, produces fully spec-compliant MCAP):
+    pip install omega-prime
+    python -c "
+        import omega_prime
+        rec = omega_prime.Recording.from_file('trace.osi', map_path='map.xodr')
+        rec.to_mcap('output.mcap')
+    "
+
+Fallback method (this script, standalone with minimal dependencies):
+    pip install mcap
     python create_mcap.py input.xodr                    # -> input.mcap
     python create_mcap.py input.xodr -o output.mcap     # explicit output path
     python create_mcap.py a.xodr b.xodr -o combined.mcap  # merge multiple files
+    python create_mcap.py input.xodr --duration 10      # 10 second timeline (default: 5s)
 
 When multiple XODR files are provided, they are merged into a single OpenDRIVE document.
 Road/junction IDs are remapped to avoid collisions and roads from each subsequent file
 are offset spatially so they don't overlap.
 
 Requirements:
-    pip install mcap protobuf
+    pip install mcap
 """
 
 from __future__ import annotations
@@ -33,6 +46,16 @@ _SCHEMA_DESCRIPTOR_B64 = (
     "CpQBChpvc2lfbWFwYXNhbW9wZW5kcml2ZS5wcm90bxIEb3NpMyJsChBNYXBBc2FtT3Blbk"
     "RyaXZlEiMKDW1hcF9yZWZlcmVuY2UYASABKAlSDG1hcFJlZmVyZW5jZRIzChZvcGVuX2Ry"
     "aXZlX3htbF9jb250ZW50GAIgASgJUhNvcGVuRHJpdmVYbWxDb250ZW50QgJIAQ=="
+)
+
+# Minimal FileDescriptorSet for osi3.GroundTruth (timestamp field only).
+# Provides a timeline channel so Lichtblick's player has messages to advance through.
+_GT_SCHEMA_DESCRIPTOR_B64 = (
+    "CmUKGG9zaTMvb3NpX3RpbWVzdGFtcC5wcm90bxIEb3NpMyI7CglUaW1lc3RhbXASGAoHc2"
+    "Vjb25kcxgBIAEoA1IHc2Vjb25kcxIUCgVuYW5vcxgCIAEoDVIFbmFub3NiBnByb3RvMwqC"
+    "AQoab3NpMy9vc2lfZ3JvdW5kdHJ1dGgucHJvdG8SBG9zaTMaGG9zaTMvb3NpX3RpbWVzdG"
+    "FtcC5wcm90byI8CgtHcm91bmRUcnV0aBItCgl0aW1lc3RhbXAYASABKAsyDy5vc2kzLlRp"
+    "bWVzdGFtcFIJdGltZXN0YW1wYgZwcm90bzM="
 )
 
 
@@ -64,6 +87,20 @@ def serialize_map_message(map_reference: str, xodr_content: str) -> bytes:
         msg += _encode_length_delimited(1, map_reference.encode("utf-8"))
     msg += _encode_length_delimited(2, xodr_content.encode("utf-8"))
     return msg
+
+
+def serialize_ground_truth(seconds: int, nanos: int) -> bytes:
+    """Serialize a minimal GroundTruth message with only a timestamp.
+
+    GroundTruth { Timestamp timestamp = 1; }
+    Timestamp { int64 seconds = 1; uint32 nanos = 2; }
+    """
+    # Encode Timestamp message
+    ts_msg = _encode_varint((1 << 3) | 0) + _encode_varint(seconds)  # seconds field
+    if nanos > 0:
+        ts_msg += _encode_varint((2 << 3) | 0) + _encode_varint(nanos)  # nanos field
+    # Encode GroundTruth.timestamp (field 1, length-delimited)
+    return _encode_length_delimited(1, ts_msg)
 
 
 def remap_ids(xml: str, id_offset: int) -> str:
@@ -133,37 +170,72 @@ def merge_xodr_files(paths: list[Path]) -> str:
     return base
 
 
-def write_mcap(output_path: Path, xodr_content: str, map_reference: str) -> None:
-    """Write a minimal MCAP file with the OpenDRIVE map."""
+def write_mcap(output_path: Path, xodr_content: str, map_reference: str, duration_s: float = 5.0) -> None:
+    """Write an MCAP file with the OpenDRIVE map and a playback timeline."""
     from mcap.writer import Writer
 
     schema_data = base64.b64decode(_SCHEMA_DESCRIPTOR_B64)
+    gt_schema_data = base64.b64decode(_GT_SCHEMA_DESCRIPTOR_B64)
     message_data = serialize_map_message(map_reference, xodr_content)
     timestamp_ns = int(time.time() * 1e9)
+
+    # Timeline: 30 fps for the specified duration
+    frame_interval_ns = 33_333_333  # ~30 fps
+    num_frames = max(1, int(duration_s * 30))
 
     with open(output_path, "wb") as f:
         writer = Writer(f)
         writer.start(library="asam-opendrive-converter")
 
-        schema_id = writer.register_schema(
+        # Map schema + channel
+        map_schema_id = writer.register_schema(
             name="osi3.MapAsamOpenDrive",
             encoding="protobuf",
             data=schema_data,
         )
-        channel_id = writer.register_channel(
+        map_channel_id = writer.register_channel(
             topic="ground_truth_map",
             message_encoding="protobuf",
-            schema_id=schema_id,
+            schema_id=map_schema_id,
         )
+
+        # GroundTruth schema + channel (provides timeline for playback)
+        gt_schema_id = writer.register_schema(
+            name="osi3.GroundTruth",
+            encoding="protobuf",
+            data=gt_schema_data,
+        )
+        gt_channel_id = writer.register_channel(
+            topic="ground_truth",
+            message_encoding="protobuf",
+            schema_id=gt_schema_id,
+        )
+
+        # Write the static map message at time 0
         writer.add_message(
-            channel_id=channel_id,
+            channel_id=map_channel_id,
             log_time=timestamp_ns,
             publish_time=timestamp_ns,
             data=message_data,
         )
+
+        # Write timeline messages
+        for i in range(num_frames):
+            t_ns = timestamp_ns + i * frame_interval_ns
+            seconds = t_ns // 1_000_000_000
+            nanos = t_ns % 1_000_000_000
+            gt_data = serialize_ground_truth(seconds, nanos)
+            writer.add_message(
+                channel_id=gt_channel_id,
+                log_time=t_ns,
+                publish_time=t_ns,
+                data=gt_data,
+            )
+
         writer.finish()
 
     print(f"Written: {output_path} ({output_path.stat().st_size:,} bytes)")
+    print(f"  Timeline: {num_frames} frames, {duration_s:.1f}s @ 30fps")
 
 
 def main() -> None:
@@ -176,6 +248,10 @@ def main() -> None:
     parser.add_argument(
         "-r", "--reference", default="",
         help="Map reference string (e.g. filename or URI)",
+    )
+    parser.add_argument(
+        "-d", "--duration", type=float, default=5.0,
+        help="Timeline duration in seconds (default: 5.0)",
     )
     args = parser.parse_args()
 
@@ -191,7 +267,7 @@ def main() -> None:
     xodr_content = merge_xodr_files(args.inputs)
     print(f"  Total XML size: {len(xodr_content):,} bytes")
 
-    write_mcap(output, xodr_content, reference)
+    write_mcap(output, xodr_content, reference, args.duration)
 
 
 if __name__ == "__main__":
