@@ -304,6 +304,24 @@ function generateMapEntities(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ENTITY ID CONVENTION
+// ═══════════════════════════════════════════════════════════════════════════════
+// SceneEntity IDs use dot notation mirroring the XODR element hierarchy,
+// following the ASAM Quality Checker Framework Rule UID Schema
+// (asam-ev/qc-framework doc/manual/rule_uid_schema.md §Rule Full Name):
+//   - camelCase XML element names → all-lowercase (e.g. laneSection → lanesection)
+//   - dots separate hierarchy levels
+//   - dynamic values (IDs, s-coordinates) inserted at their natural position
+//
+// Examples:
+//   road.17.lanesection.0.00.lane.-1           (lane surface)
+//   road.17.lanesection.0.00.lane.-1.boundary  (lane boundary)
+//   road.17.roadmark.3                         (road marking chunk)
+//   road.17.object.guardrail_01                (road object)
+//   road.17.signal.sign_274                    (road signal)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // LANE SURFACES → TriangleListPrimitive [FG-TRI]
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -321,8 +339,7 @@ function generateMapEntities(
  * [libODR] Vertex layout: pairs (outer, inner) per s-sample.
  *   Triangle indices form 2-triangle quads. Winding is correct per lane side.
  *
- * [FG-ENTITY] Entity ID format: "road.{roadId}.lanesection.{s0}.lane.{laneId}"
- *   Ensures stable upsert key per lane.
+ * [FG-ENTITY] Entity ID: "road.{roadId}.lanesection.{s0}.lane.{laneId}"
  */
 function buildLaneSurfaceEntities(
   lanesMesh: LanesMesh,
