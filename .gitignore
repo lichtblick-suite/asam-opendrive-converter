@@ -12,9 +12,13 @@ website/node_modules/
 src/wasm/libOpenDRIVE.js
 
 # Test data (downloaded, not committed)
-test-data/*.mcap
 test-data/*.osi
-test-data/*.xodr
+
+# Committed test fixtures:
+#   test-data/*.xodr — OpenDRIVE XML maps (small, text-based)
+#   test-data/pedestrian_fabriksgatan.mcap — MCAP recording for integration tests
+# Large MCAP files not needed for CI:
+test-data/osi_centerline_example.mcap
 
 # IDE
 .vscode/
