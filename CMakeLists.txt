@@ -4,8 +4,8 @@ project(libOpenDRIVE_WASM)
 # Build libOpenDRIVE as a WASM module using Emscripten
 # Usage:
 #   mkdir build-wasm && cd build-wasm
-#   emcmake cmake -DCMAKE_BUILD_TYPE=Release ..
-#   emmake make -j$(nproc)
+#   emcmake cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
+#   emmake ninja
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/submodule/libOpenDRIVE)
 
@@ -54,6 +54,11 @@ target_link_libraries(libOpenDRIVE PRIVATE pugixml)
 
 target_compile_features(libOpenDRIVE PRIVATE cxx_std_17)
 
+# Ensure output goes to a known location
+set_target_properties(libOpenDRIVE PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 # Emscripten-specific flags
 if(EMSCRIPTEN)
     set_target_properties(libOpenDRIVE PROPERTIES
@@ -78,7 +83,7 @@ if(EMSCRIPTEN)
         -sDISABLE_EXCEPTION_CATCHING=1
         # Environment: web, worker, and node (node needed for tests)
         -sENVIRONMENT=web,worker,node
-        # Single file: embed WASM in JS for easier bundling
+        # Keep WASM as separate file (not embedded in JS)
         -sSINGLE_FILE=0
     )
 else()

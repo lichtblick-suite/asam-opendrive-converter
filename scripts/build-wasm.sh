@@ -51,18 +51,18 @@ fi
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
-# Configure with Emscripten
+# Configure with Emscripten (use Ninja for proper dependency handling)
 echo "Configuring..."
 cd "${BUILD_DIR}"
-emcmake cmake -DCMAKE_BUILD_TYPE=Release "${PROJECT_DIR}"
-
-# Build (limit parallelism — wasm-opt linking step has race conditions at high -j)
-JOBS=$(nproc)
-if [ "${JOBS}" -gt 4 ]; then
-    JOBS=4
+if command -v ninja &> /dev/null; then
+    emcmake cmake -G Ninja -DCMAKE_BUILD_TYPE=Release "${PROJECT_DIR}"
+    echo "Compiling..."
+    emmake ninja
+else
+    emcmake cmake -DCMAKE_BUILD_TYPE=Release "${PROJECT_DIR}"
+    echo "Compiling..."
+    emmake make -j"$(nproc)"
 fi
-echo "Compiling (jobs=${JOBS})..."
-emmake make -j"${JOBS}"
 
 # Copy output to src/wasm/
 mkdir -p "${OUTPUT_DIR}"
