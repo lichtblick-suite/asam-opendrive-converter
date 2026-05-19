@@ -231,17 +231,15 @@ export function registerOpenDriveMapConverter(): (
 // ENTITY GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Safely call an optional WASM function; returns undefined if it doesn't exist.
- *  Only catches TypeError (indicates the Embind function is missing from the WASM binary).
- *  Other errors propagate so real bugs are not silently swallowed. */
+/** Safely call an optional WASM function; returns undefined on any failure.
+ *  These are enrichment-only calls (metadata maps) that must not break core rendering.
+ *  Failures include: missing Embind function (TypeError), internal WASM errors
+ *  (RuntimeError), or C++ exceptions propagated through Emscripten. */
 function tryCall<T extends { delete(): void }>(fn: () => T): T | undefined {
   try {
     return fn();
-  } catch (err: unknown) {
-    if (err instanceof TypeError) {
-      return undefined;
-    }
-    throw err;
+  } catch {
+    return undefined;
   }
 }
 
