@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Run tests
+npm test || exit 1
+
+# Run linting on staged files
+npx lint-staged || exit 1
+
+# Audit for security vulnerabilities
+npm audit --audit-level=high || exit 1
+
+# Verify build
+npm run build || exit 1

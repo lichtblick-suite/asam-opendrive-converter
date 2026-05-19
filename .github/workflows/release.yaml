@@ -74,10 +74,10 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Package
-        run: npx lichtblick-extension package
+        run: npm run package
 
       - name: Download ScanCode Toolkit
         run: |
