@@ -29,6 +29,16 @@ export function generateOpenDrive3DPanelSettings(): any {
           input: "boolean" as const,
           value: config?.showRoadMarkings ?? DEFAULT_SETTINGS.showRoadMarkings,
         },
+        showRoadObjects: {
+          label: "Show Road Objects",
+          input: "boolean" as const,
+          value: config?.showRoadObjects ?? DEFAULT_SETTINGS.showRoadObjects,
+        },
+        showRoadSignals: {
+          label: "Show Road Signals",
+          input: "boolean" as const,
+          value: config?.showRoadSignals ?? DEFAULT_SETTINGS.showRoadSignals,
+        },
         stepSize: {
           label: "Tessellation Tolerance (m)",
           input: "number" as const,
@@ -56,6 +66,12 @@ export function generateOpenDrive3DPanelSettings(): any {
           break;
         case "showRoadMarkings":
           config.showRoadMarkings = action.payload.value as boolean;
+          break;
+        case "showRoadObjects":
+          config.showRoadObjects = action.payload.value as boolean;
+          break;
+        case "showRoadSignals":
+          config.showRoadSignals = action.payload.value as boolean;
           break;
         case "stepSize":
           config.stepSize = action.payload.value as number;

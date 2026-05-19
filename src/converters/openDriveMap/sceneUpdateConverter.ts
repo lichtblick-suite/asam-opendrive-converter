@@ -78,11 +78,12 @@ import {
   LANE_COLORS,
   MARKING_Z_OFFSET,
   ROAD_MARK_COLORS,
-  ROAD_MARK_WIDTH,
+  ROAD_OBJECT_COLOR,
+  ROAD_SIGNAL_COLOR,
 } from "../../config/constants";
 import type { RgbaColor } from "../../config/constants";
 import type { MapAsamOpenDrive } from "../../utils/proto";
-import type { Color, PartialSceneEntity, Point3 } from "../../utils/scene";
+import type { PartialSceneEntity, Point3 } from "../../utils/scene";
 import { IDENTITY_POSE, makeSceneEntity } from "../../utils/scene";
 import { getLibOpenDRIVE } from "../../wasm";
 import type {
@@ -93,6 +94,8 @@ import type {
   OpenDriveMap,
   RoadmarksMesh,
   RoadNetworkMesh,
+  RoadObjectsMesh,
+  RoadSignalsMesh,
   Vec3D,
 } from "../../wasm/types";
 
@@ -243,6 +246,18 @@ function generateMapEntities(
 
     if (config.showRoadMarkings) {
       entities.push(...buildRoadMarkEntities(mesh.roadmarks_mesh, timestamp));
+    }
+
+    if (config.showRoadObjects) {
+      entities.push(
+        ...buildRoadObjectEntities(mesh.road_objects_mesh, timestamp),
+      );
+    }
+
+    if (config.showRoadSignals) {
+      entities.push(
+        ...buildRoadSignalEntities(mesh.road_signals_mesh, timestamp),
+      );
     }
 
     laneTypeMap.delete();
@@ -445,96 +460,284 @@ function buildLaneBoundaryEntities(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ROAD MARKINGS → LinePrimitive LINE_LIST [FG-LINE]
+// ROAD MARKINGS → TriangleListPrimitive [FG-TRI]
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Build LINE_LIST entities from roadmarks mesh outline.
- * Groups per roadmark type for per-type coloring.
+ * Build TriangleListPrimitive entities from roadmarks mesh.
+ * One entity per roadmark segment (grouped by roadmark_type_start_indices).
  *
- * [libODR] RoadmarksMesh.get_roadmark_outline_indices(): same vertex-pair
- *   outline logic as lanes — connects outer/inner border vertices along s.
- *   roadmark_type_start_indices maps vertex_start_idx → roadmark type string.
+ * [libODR] RoadmarksMesh: each RoadMark produces a triangle strip mesh.
+ *   For broken/dashed marks, libOpenDRIVE generates separate RoadMark objects
+ *   per dash segment — gaps have no mesh geometry. Rendering as filled
+ *   triangles naturally produces correct dashed appearance.
  *
- * [ODR §11.8] Road marking types: "solid", "broken", "solid solid", etc.
- *   Colors: "standard"(white), "white", "yellow", "blue", "green", "red"
- *   Width from RoadMarkGroup::width or weight-based default (0.12m standard, 0.25m bold)
+ * [ODR §11.8] roadmark_type_start_indices maps vertex_start_idx → type string
+ *   (solid, broken, solid_solid, broken_solid, etc.)
  *
- * [FG-LINE] LINE_LIST with per-type uniform color.
- *   Z-OFFSET: +0.02m above surface to render above both surface and boundaries.
+ * [FG-TRI] TriangleListPrimitive with per-type color from ROAD_MARK_COLORS.
+ *   Z-OFFSET: +0.02m above surface to prevent z-fighting.
  */
 function buildRoadMarkEntities(
   roadmarksMesh: RoadmarksMesh,
   timestamp: Time,
 ): PartialSceneEntity[] {
-  const outlineIndices = roadmarksMesh.get_roadmark_outline_indices();
-  const numOutline = outlineIndices.size();
-
-  if (numOutline < 2) {
-    outlineIndices.delete();
-    return [];
-  }
-
   const vertices = roadmarksMesh.vertices;
+  const indices = roadmarksMesh.indices;
   const numVerts = vertices.size();
+  const numIndices = indices.size();
 
-  if (numVerts === 0) {
-    outlineIndices.delete();
+  if (numVerts === 0 || numIndices === 0) {
     return [];
   }
 
-  // Build compact vertex array with z-offset for all roadmark vertices
-  const points: Point3[] = [];
-  const usedIndices = new Set<number>();
-  for (let i = 0; i < numOutline; i++) {
-    usedIndices.add(outlineIndices.get(i));
+  const allPoints = extractVertices(vertices, MARKING_Z_OFFSET);
+
+  // Iterate per-roadmark chunks
+  const typeKeys = roadmarksMesh.roadmark_type_start_indices.keys();
+  const numChunks = typeKeys.size();
+  const entities: PartialSceneEntity[] = [];
+
+  for (let ci = 0; ci < numChunks; ci++) {
+    const startIdx = typeKeys.get(ci);
+    const endIdx = ci + 1 < numChunks ? typeKeys.get(ci + 1) : numVerts;
+    const markType =
+      roadmarksMesh.roadmark_type_start_indices.get(startIdx) ?? "solid";
+    const roadId = roadmarksMesh.get_road_id(startIdx);
+
+    const chunkPoints: Point3[] = [];
+    const chunkIndices: number[] = [];
+    const vertexRemap = new Map<number, number>();
+
+    for (let i = 0; i < numIndices; i += 3) {
+      const i0 = indices.get(i);
+      const i1 = indices.get(i + 1);
+      const i2 = indices.get(i + 2);
+
+      if (
+        i0 >= startIdx &&
+        i0 < endIdx &&
+        i1 >= startIdx &&
+        i1 < endIdx &&
+        i2 >= startIdx &&
+        i2 < endIdx
+      ) {
+        chunkIndices.push(
+          remapVertex(i0, vertexRemap, allPoints, chunkPoints),
+          remapVertex(i1, vertexRemap, allPoints, chunkPoints),
+          remapVertex(i2, vertexRemap, allPoints, chunkPoints),
+        );
+      }
+    }
+
+    if (chunkIndices.length === 0) {
+      continue;
+    }
+
+    const color = ROAD_MARK_COLORS["white"]!;
+    const entityId = `odr_mark_r${roadId}_${ci}`;
+
+    const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
+    entity.triangles = [
+      {
+        pose: IDENTITY_POSE,
+        points: chunkPoints,
+        color,
+        colors: [],
+        indices: chunkIndices,
+      },
+    ];
+    entity.metadata = [
+      { key: "road_id", value: roadId },
+      { key: "mark_type", value: markType },
+    ];
+    entities.push(entity);
   }
 
-  const vertexRemap = new Map<number, number>();
-  for (const idx of usedIndices) {
-    const v = vertices.get(idx);
-    vertexRemap.set(idx, points.length);
-    points.push({ x: v[0], y: v[1], z: v[2] + MARKING_Z_OFFSET });
-  }
-
-  // Remap all outline indices
-  const lineIndices: number[] = [];
-  for (let i = 0; i < numOutline; i++) {
-    lineIndices.push(vertexRemap.get(outlineIndices.get(i))!);
-  }
-
-  outlineIndices.delete();
-
-  // [ODR §11.8] Determine color from roadmark_type_start_indices
-  // Use "white" as default per e_roadMarkColor "standard" → white appearance
-  const typeMap = roadmarksMesh.roadmark_type_start_indices;
-  const typeKeys = typeMap.keys();
-  const markColor: Color =
-    typeKeys.size() > 0
-      ? (ROAD_MARK_COLORS[typeMap.get(typeKeys.get(0))!] ??
-        ROAD_MARK_COLORS["white"]!)
-      : ROAD_MARK_COLORS["white"]!;
   typeKeys.delete();
+  return entities;
+}
 
-  const entity = makeSceneEntity(
-    "odr_road_markings",
-    GLOBAL_FRAME_ID,
-    timestamp,
-  );
-  entity.lines = [
-    {
-      type: 2, // [FG-LINE] LINE_LIST
-      pose: IDENTITY_POSE,
-      thickness: ROAD_MARK_WIDTH,
-      scale_invariant: false,
-      points,
-      color: markColor,
-      colors: [],
-      indices: lineIndices,
-    },
-  ];
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROAD OBJECTS → TriangleListPrimitive [FG-TRI]
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  return [entity];
+/**
+ * Build TriangleListPrimitive entities from road objects mesh.
+ * One entity per road object (grouped by road_object_start_indices).
+ *
+ * [libODR] RoadObjectsMesh: extends RoadsMesh with per-object grouping.
+ *   Objects include barriers, poles, buildings, vegetation etc. [ODR §13]
+ *   Mesh is generated from object outlines [ODR §13.4] and repeats [ODR §13.5].
+ *
+ * [FG-TRI] Rendered as indexed triangles with uniform ROAD_OBJECT_COLOR.
+ */
+function buildRoadObjectEntities(
+  objectsMesh: RoadObjectsMesh,
+  timestamp: Time,
+): PartialSceneEntity[] {
+  const vertices = objectsMesh.vertices;
+  const indices = objectsMesh.indices;
+  const numVerts = vertices.size();
+  const numIndices = indices.size();
+
+  if (numVerts === 0 || numIndices === 0) {
+    return [];
+  }
+
+  const allPoints = extractVertices(vertices);
+
+  const objKeys = objectsMesh.road_object_start_indices.keys();
+  const numObjects = objKeys.size();
+  const entities: PartialSceneEntity[] = [];
+
+  for (let oi = 0; oi < numObjects; oi++) {
+    const startIdx = objKeys.get(oi);
+    const endIdx = oi + 1 < numObjects ? objKeys.get(oi + 1) : numVerts;
+    const objectId = objectsMesh.road_object_start_indices.get(startIdx) ?? "";
+    const roadId = objectsMesh.get_road_id(startIdx);
+
+    const objPoints: Point3[] = [];
+    const objIndices: number[] = [];
+    const vertexRemap = new Map<number, number>();
+
+    for (let i = 0; i < numIndices; i += 3) {
+      const i0 = indices.get(i);
+      const i1 = indices.get(i + 1);
+      const i2 = indices.get(i + 2);
+
+      if (
+        i0 >= startIdx &&
+        i0 < endIdx &&
+        i1 >= startIdx &&
+        i1 < endIdx &&
+        i2 >= startIdx &&
+        i2 < endIdx
+      ) {
+        objIndices.push(
+          remapVertex(i0, vertexRemap, allPoints, objPoints),
+          remapVertex(i1, vertexRemap, allPoints, objPoints),
+          remapVertex(i2, vertexRemap, allPoints, objPoints),
+        );
+      }
+    }
+
+    if (objIndices.length === 0) {
+      continue;
+    }
+
+    const entityId = `odr_obj_r${roadId}_${objectId}`;
+    const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
+    entity.triangles = [
+      {
+        pose: IDENTITY_POSE,
+        points: objPoints,
+        color: ROAD_OBJECT_COLOR,
+        colors: [],
+        indices: objIndices,
+      },
+    ];
+    entity.metadata = [
+      { key: "road_id", value: roadId },
+      { key: "object_id", value: objectId },
+    ];
+    entities.push(entity);
+  }
+
+  objKeys.delete();
+  return entities;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROAD SIGNALS → TriangleListPrimitive [FG-TRI]
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Build TriangleListPrimitive entities from road signals mesh.
+ * One entity per road signal (grouped by road_signal_start_indices).
+ *
+ * [libODR] RoadSignalsMesh: extends RoadsMesh with per-signal grouping.
+ *   Signals are rendered as oriented 3D boxes [ODR §14] placed at the
+ *   signal position with correct heading/pitch/roll from the road geometry.
+ *   See Road::get_road_signal_mesh() in Road.cpp.
+ *
+ * [FG-TRI] Rendered as indexed triangles with uniform ROAD_SIGNAL_COLOR.
+ */
+function buildRoadSignalEntities(
+  signalsMesh: RoadSignalsMesh,
+  timestamp: Time,
+): PartialSceneEntity[] {
+  const vertices = signalsMesh.vertices;
+  const indices = signalsMesh.indices;
+  const numVerts = vertices.size();
+  const numIndices = indices.size();
+
+  if (numVerts === 0 || numIndices === 0) {
+    return [];
+  }
+
+  const allPoints = extractVertices(vertices);
+
+  const sigKeys = signalsMesh.road_signal_start_indices.keys();
+  const numSignals = sigKeys.size();
+  const entities: PartialSceneEntity[] = [];
+
+  for (let si = 0; si < numSignals; si++) {
+    const startIdx = sigKeys.get(si);
+    const endIdx = si + 1 < numSignals ? sigKeys.get(si + 1) : numVerts;
+    const signalId =
+      signalsMesh.road_signal_start_indices.get(startIdx) ?? "";
+    const roadId = signalsMesh.get_road_id(startIdx);
+
+    const sigPoints: Point3[] = [];
+    const sigIndices: number[] = [];
+    const vertexRemap = new Map<number, number>();
+
+    for (let i = 0; i < numIndices; i += 3) {
+      const i0 = indices.get(i);
+      const i1 = indices.get(i + 1);
+      const i2 = indices.get(i + 2);
+
+      if (
+        i0 >= startIdx &&
+        i0 < endIdx &&
+        i1 >= startIdx &&
+        i1 < endIdx &&
+        i2 >= startIdx &&
+        i2 < endIdx
+      ) {
+        sigIndices.push(
+          remapVertex(i0, vertexRemap, allPoints, sigPoints),
+          remapVertex(i1, vertexRemap, allPoints, sigPoints),
+          remapVertex(i2, vertexRemap, allPoints, sigPoints),
+        );
+      }
+    }
+
+    if (sigIndices.length === 0) {
+      continue;
+    }
+
+    const entityId = `odr_signal_r${roadId}_${signalId}`;
+    const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
+    entity.triangles = [
+      {
+        pose: IDENTITY_POSE,
+        points: sigPoints,
+        color: ROAD_SIGNAL_COLOR,
+        colors: [],
+        indices: sigIndices,
+      },
+    ];
+    entity.metadata = [
+      { key: "road_id", value: roadId },
+      { key: "signal_id", value: signalId },
+    ];
+    entities.push(entity);
+  }
+
+  sigKeys.delete();
+  return entities;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -542,12 +745,15 @@ function buildRoadMarkEntities(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Extract all Vec3D vertices from an Emscripten vector into a JS Point3 array */
-function extractVertices(vertices: EmscriptenVector<Vec3D>): Point3[] {
+function extractVertices(
+  vertices: EmscriptenVector<Vec3D>,
+  zOffset = 0,
+): Point3[] {
   const count = vertices.size();
   const result: Point3[] = new Array(count);
   for (let i = 0; i < count; i++) {
     const v = vertices.get(i);
-    result[i] = { x: v[0], y: v[1], z: v[2] };
+    result[i] = { x: v[0], y: v[1], z: v[2] + zOffset };
   }
   return result;
 }

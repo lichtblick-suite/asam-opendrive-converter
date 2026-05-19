@@ -46,6 +46,14 @@ export const LANE_COLORS: Record<string, RgbaColor> = {
   onRamp: { r: 0.35, g: 0.35, b: 0.38, a: 0.85 },
   offRamp: { r: 0.35, g: 0.35, b: 0.38, a: 0.85 },
   connectingRamp: { r: 0.35, g: 0.35, b: 0.38, a: 0.85 },
+  walking: { r: 0.6, g: 0.55, b: 0.5, a: 0.85 },
+  tram: { r: 0.4, g: 0.35, b: 0.5, a: 0.85 },
+  rail: { r: 0.45, g: 0.4, b: 0.5, a: 0.85 },
+  bus: { r: 0.3, g: 0.4, b: 0.55, a: 0.85 },
+  taxi: { r: 0.5, g: 0.5, b: 0.3, a: 0.85 },
+  hov: { r: 0.35, g: 0.45, b: 0.4, a: 0.85 },
+  shared: { r: 0.4, g: 0.4, b: 0.45, a: 0.85 },
+  slipLane: { r: 0.35, g: 0.35, b: 0.38, a: 0.85 },
   none: { r: 0.2, g: 0.2, b: 0.2, a: 0.3 },
 };
 
@@ -82,6 +90,9 @@ export const ROAD_MARK_COLORS: Record<string, RgbaColor> = {
   blue: { r: 0.0, g: 0.4, b: 1.0, a: 1.0 },
   green: { r: 0.0, g: 0.8, b: 0.2, a: 1.0 },
   red: { r: 1.0, g: 0.2, b: 0.2, a: 1.0 },
+  orange: { r: 1.0, g: 0.55, b: 0.0, a: 1.0 },
+  violet: { r: 0.6, g: 0.2, b: 0.8, a: 1.0 },
+  black: { r: 0.1, g: 0.1, b: 0.1, a: 1.0 },
 };
 
 export const ROAD_MARK_WIDTH = 0.15;
@@ -93,6 +104,23 @@ export const GLOBAL_FRAME_ID = "global";
 export const LANE_Z_OFFSET = 0.0;
 export const BOUNDARY_Z_OFFSET = 0.01;
 export const MARKING_Z_OFFSET = 0.02;
+export const OBJECT_Z_OFFSET = 0.0; // objects/signals are 3D — no z-fighting
+
+// Road object color [ODR §13] — neutral gray for infrastructure
+export const ROAD_OBJECT_COLOR: RgbaColor = {
+  r: 0.6,
+  g: 0.55,
+  b: 0.5,
+  a: 0.9,
+};
+
+// Road signal color [ODR §14] — distinct yellow-green for visibility
+export const ROAD_SIGNAL_COLOR: RgbaColor = {
+  r: 0.8,
+  g: 0.75,
+  b: 0.2,
+  a: 0.9,
+};
 
 // Default chord error tolerance [libODR eps parameter]
 export const DEFAULT_STEP_SIZE = 0.1;

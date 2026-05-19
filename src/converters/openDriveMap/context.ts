@@ -12,6 +12,8 @@ export interface OpenDriveConverterSettings {
   showLaneSurfaces: boolean;
   showLaneBoundaries: boolean;
   showRoadMarkings: boolean;
+  showRoadObjects: boolean;
+  showRoadSignals: boolean;
   /** Chord error tolerance in meters [libODR eps parameter].
    *  Smaller = more vertices = higher fidelity. Default 0.1m. */
   stepSize: number;
@@ -21,6 +23,8 @@ export const DEFAULT_SETTINGS: OpenDriveConverterSettings = {
   showLaneSurfaces: true,
   showLaneBoundaries: true,
   showRoadMarkings: true,
+  showRoadObjects: true,
+  showRoadSignals: true,
   stepSize: 0.1,
 };
 
