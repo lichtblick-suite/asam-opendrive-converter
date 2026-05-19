@@ -81,7 +81,6 @@ jobs:
 
       - name: Audit Dependencies
         run: npm audit
-        continue-on-error: true
 
       - name: Test Project
         run: npm test
