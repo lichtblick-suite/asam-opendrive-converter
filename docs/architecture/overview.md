@@ -11,19 +11,24 @@ This extension uses [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE/) co
 ### High-Level Flow
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px', 'primaryColor': '#bbdefb', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#1565c0', 'lineColor': '#546e7a', 'secondaryColor': '#ffe0b2', 'tertiaryColor': '#c8e6c9'}}}%%
 graph TD
-    MCAP[MCAP File<br/>OMEGA PRIME recording] -->|protobuf channel| DESER[Proto Deserializer<br/><code>src/utils/proto.ts</code>]
-    DESER -->|OpenDRIVE XML string| WASM[libOpenDRIVE WASM<br/><code>src/wasm/libOpenDRIVE.js</code>]
-    SETTINGS[Panel Settings<br/><code>panelSettings.ts</code>] --> ADAPTER
-    WASM -->|RoadNetworkMesh| ADAPTER[Schema Adapter<br/><code>sceneUpdateConverter.ts</code>]
-    ADAPTER -->|SceneEntity[] + deletions| SCENE[SceneUpdate]
-    ADAPTER <--> CACHE[Converter Context Cache<br/><code>context.ts</code>]
-    SCENE --> PANEL[Lichtblick 3D Panel]
+    MCAP["MCAP File\nOMEGA PRIME recording"] -->|"protobuf channel"| DESER["Proto Deserializer\nutils/proto.ts"]
+    DESER -->|"OpenDRIVE XML string"| WASM["libOpenDRIVE WASM\nwasm/libOpenDRIVE.js"]
+    SETTINGS["Panel Settings\npanelSettings.ts"] --> ADAPTER
+    WASM -->|"RoadNetworkMesh"| ADAPTER["Schema Adapter\nsceneUpdateConverter.ts"]
+    ADAPTER -->|"SceneEntity entities + deletions"| SCENE["SceneUpdate"]
+    ADAPTER <-->|"cache hit/miss"| CACHE["Converter Context Cache\ncontext.ts"]
+    SCENE --> PANEL["Lichtblick 3D Panel"]
 
-    style WASM fill:#bbdefb,stroke:#1565c0
-    style ADAPTER fill:#ffe0b2,stroke:#e65100
-    style CACHE fill:#ede7f6,stroke:#5e35b1
-    style PANEL fill:#c8e6c9,stroke:#2e7d32
+    style MCAP fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style DESER fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style WASM fill:#bbdefb,stroke:#0d47a1,stroke-width:2px,color:#0d47a1
+    style SETTINGS fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
+    style ADAPTER fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#bf360c
+    style CACHE fill:#ede7f6,stroke:#5e35b1,color:#311b92
+    style SCENE fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style PANEL fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px,color:#1b5e20
 ```
 
 ### Why libOpenDRIVE
