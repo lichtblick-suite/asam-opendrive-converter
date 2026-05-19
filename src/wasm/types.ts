@@ -192,6 +192,30 @@ export interface LibOpenDRIVEModule {
     odrMap: OpenDriveMap,
     roadmarksMesh: RoadmarksMesh,
   ): EmscriptenMap<number, string>;
+
+  /** Get road metadata per road chunk: vertex_start_idx → "name\tlength\tjunction\tspeed_max\tspeed_unit\ttype" */
+  getRoadMetadataMap(
+    odrMap: OpenDriveMap,
+    lanesMesh: LanesMesh,
+  ): EmscriptenMap<number, string>;
+
+  /** Get road object metadata per chunk: vertex_start_idx → "type\tname\tsubtype\torientation\tis_dynamic\twidth\theight\tlength\ts0\tt0" */
+  getRoadObjectMetadataMap(
+    odrMap: OpenDriveMap,
+    objectsMesh: RoadObjectsMesh,
+  ): EmscriptenMap<number, string>;
+
+  /** Get road signal metadata per chunk: vertex_start_idx → "name\tcountry\ttype\tsubtype\tvalue\ttext\tis_dynamic\theight\twidth\torientation" */
+  getRoadSignalMetadataMap(
+    odrMap: OpenDriveMap,
+    signalsMesh: RoadSignalsMesh,
+  ): EmscriptenMap<number, string>;
+
+  /** Get roadmark group metadata per chunk: vertex_start_idx → "type\tweight\tlane_change\twidth" */
+  getRoadmarkMetadataMap(
+    odrMap: OpenDriveMap,
+    roadmarksMesh: RoadmarksMesh,
+  ): EmscriptenMap<number, string>;
 }
 
 /** Emscripten module factory function */

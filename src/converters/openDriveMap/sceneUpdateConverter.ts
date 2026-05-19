@@ -250,6 +250,27 @@ function generateMapEntities(
       mesh.roadmarks_mesh,
     );
 
+    // [ODR §13] Get road object metadata per chunk
+    const roadObjectMetadataMap = wasm.getRoadObjectMetadataMap(
+      odrMap,
+      mesh.road_objects_mesh,
+    );
+
+    // [ODR §14] Get road signal metadata per chunk
+    const roadSignalMetadataMap = wasm.getRoadSignalMetadataMap(
+      odrMap,
+      mesh.road_signals_mesh,
+    );
+
+    // [ODR §11.8] Get roadmark group metadata per chunk
+    const roadmarkMetadataMap = wasm.getRoadmarkMetadataMap(
+      odrMap,
+      mesh.roadmarks_mesh,
+    );
+
+    // [ODR §10] Get road-level metadata (name, speed, type)
+    const roadMetadataMap = wasm.getRoadMetadataMap(odrMap, mesh.lanes_mesh);
+
     // [ODR §12] Identify junction connecting roads for distinct coloring
     const junctionRoadIdsVec = wasm.getJunctionRoadIds(odrMap);
     const junctionRoadIds = vectorToSet(junctionRoadIdsVec);
@@ -263,6 +284,7 @@ function generateMapEntities(
           mesh.lanes_mesh,
           laneTypeMap,
           junctionRoadIds,
+          roadMetadataMap,
           timestamp,
         ),
       );
@@ -277,6 +299,7 @@ function generateMapEntities(
         ...buildRoadMarkEntities(
           mesh.roadmarks_mesh,
           roadmarkColorMap,
+          roadmarkMetadataMap,
           timestamp,
         ),
       );
@@ -284,18 +307,30 @@ function generateMapEntities(
 
     if (config.showRoadObjects) {
       entities.push(
-        ...buildRoadObjectEntities(mesh.road_objects_mesh, timestamp),
+        ...buildRoadObjectEntities(
+          mesh.road_objects_mesh,
+          roadObjectMetadataMap,
+          timestamp,
+        ),
       );
     }
 
     if (config.showRoadSignals) {
       entities.push(
-        ...buildRoadSignalEntities(mesh.road_signals_mesh, timestamp),
+        ...buildRoadSignalEntities(
+          mesh.road_signals_mesh,
+          roadSignalMetadataMap,
+          timestamp,
+        ),
       );
     }
 
     laneTypeMap.delete();
     roadmarkColorMap.delete();
+    roadObjectMetadataMap.delete();
+    roadSignalMetadataMap.delete();
+    roadmarkMetadataMap.delete();
+    roadMetadataMap.delete();
     mesh.delete();
     return entities;
   } finally {
@@ -345,6 +380,7 @@ function buildLaneSurfaceEntities(
   lanesMesh: LanesMesh,
   laneTypeMap: EmscriptenMap<number, string>,
   junctionRoadIds: Set<string>,
+  roadMetadataMap: EmscriptenMap<number, string>,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const entities: PartialSceneEntity[] = [];
@@ -429,6 +465,28 @@ function buildLaneSurfaceEntities(
       { key: "lane_type", value: laneType },
       { key: "junction", value: isJunction ? "yes" : "no" },
     ];
+
+    // Enrich with road-level metadata (name, speed, type)
+    const roadMeta = roadMetadataMap.get(startIdx);
+    if (roadMeta) {
+      const [roadName, roadLength, , speedMax, speedUnit, roadType] =
+        roadMeta.split("\t");
+      if (roadName) {
+        entity.metadata.push({ key: "road_name", value: roadName });
+      }
+      if (roadLength) {
+        entity.metadata.push({ key: "road_length", value: roadLength });
+      }
+      if (speedMax) {
+        entity.metadata.push({
+          key: "speed_limit",
+          value: speedUnit ? `${speedMax} ${speedUnit}` : speedMax,
+        });
+      }
+      if (roadType) {
+        entity.metadata.push({ key: "road_type", value: roadType });
+      }
+    }
     entities.push(entity);
   }
 
@@ -558,6 +616,7 @@ function buildLaneBoundaryEntities(
 function buildRoadMarkEntities(
   roadmarksMesh: RoadmarksMesh,
   roadmarkColorMap: EmscriptenMap<number, string>,
+  roadmarkMetadataMap: EmscriptenMap<number, string>,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = roadmarksMesh.vertices;
@@ -632,6 +691,21 @@ function buildRoadMarkEntities(
       { key: "road_id", value: roadId },
       { key: "mark_type", value: markType },
     ];
+
+    // Enrich with roadmark group metadata (weight, lane_change)
+    const rmMeta = roadmarkMetadataMap.get(startIdx);
+    if (rmMeta) {
+      const [, weight, laneChange, width] = rmMeta.split("\t");
+      if (weight) {
+        entity.metadata.push({ key: "weight", value: weight });
+      }
+      if (laneChange) {
+        entity.metadata.push({ key: "lane_change", value: laneChange });
+      }
+      if (width) {
+        entity.metadata.push({ key: "width", value: width });
+      }
+    }
     entities.push(entity);
   }
 
@@ -655,6 +729,7 @@ function buildRoadMarkEntities(
  */
 function buildRoadObjectEntities(
   objectsMesh: RoadObjectsMesh,
+  objectMetadataMap: EmscriptenMap<number, string>,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = objectsMesh.vertices;
@@ -722,6 +797,53 @@ function buildRoadObjectEntities(
       { key: "road_id", value: roadId },
       { key: "object_id", value: objectId },
     ];
+
+    // Enrich with object metadata from the parsed OpenDRIVE
+    const objMeta = objectMetadataMap.get(startIdx);
+    if (objMeta) {
+      const [
+        type,
+        name,
+        subtype,
+        orientation,
+        isDynamic,
+        width,
+        height,
+        length,
+        s0,
+        t0,
+      ] = objMeta.split("\t");
+      if (type) {
+        entity.metadata.push({ key: "type", value: type });
+      }
+      if (name) {
+        entity.metadata.push({ key: "name", value: name });
+      }
+      if (subtype) {
+        entity.metadata.push({ key: "subtype", value: subtype });
+      }
+      if (orientation) {
+        entity.metadata.push({ key: "orientation", value: orientation });
+      }
+      if (isDynamic === "true") {
+        entity.metadata.push({ key: "dynamic", value: "true" });
+      }
+      if (width && width !== "0.000000") {
+        entity.metadata.push({ key: "width", value: width });
+      }
+      if (height && height !== "0.000000") {
+        entity.metadata.push({ key: "height", value: height });
+      }
+      if (length && length !== "0.000000") {
+        entity.metadata.push({ key: "length", value: length });
+      }
+      if (s0) {
+        entity.metadata.push({ key: "s", value: s0 });
+      }
+      if (t0) {
+        entity.metadata.push({ key: "t", value: t0 });
+      }
+    }
     entities.push(entity);
   }
 
@@ -746,6 +868,7 @@ function buildRoadObjectEntities(
  */
 function buildRoadSignalEntities(
   signalsMesh: RoadSignalsMesh,
+  signalMetadataMap: EmscriptenMap<number, string>,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = signalsMesh.vertices;
@@ -813,6 +936,53 @@ function buildRoadSignalEntities(
       { key: "road_id", value: roadId },
       { key: "signal_id", value: signalId },
     ];
+
+    // Enrich with signal metadata from the parsed OpenDRIVE
+    const sigMeta = signalMetadataMap.get(startIdx);
+    if (sigMeta) {
+      const [
+        name,
+        country,
+        type,
+        subtype,
+        value,
+        text,
+        isDynamic,
+        height,
+        width,
+        orientation,
+      ] = sigMeta.split("\t");
+      if (name) {
+        entity.metadata.push({ key: "name", value: name });
+      }
+      if (country) {
+        entity.metadata.push({ key: "country", value: country });
+      }
+      if (type) {
+        entity.metadata.push({ key: "type", value: type });
+      }
+      if (subtype && subtype !== "-1" && subtype !== "none") {
+        entity.metadata.push({ key: "subtype", value: subtype });
+      }
+      if (value && value !== "0.000000") {
+        entity.metadata.push({ key: "value", value });
+      }
+      if (text) {
+        entity.metadata.push({ key: "text", value: text });
+      }
+      if (isDynamic === "true") {
+        entity.metadata.push({ key: "dynamic", value: "true" });
+      }
+      if (height && height !== "0.000000") {
+        entity.metadata.push({ key: "height", value: height });
+      }
+      if (width && width !== "0.000000") {
+        entity.metadata.push({ key: "width", value: width });
+      }
+      if (orientation) {
+        entity.metadata.push({ key: "orientation", value: orientation });
+      }
+    }
     entities.push(entity);
   }
 
