@@ -31,10 +31,12 @@ The map is displayed statically in the 3D panel over the full duration of the re
 ## Quick Start
 
 ```bash
-# Install from source
-git clone https://github.com/lichtblick-suite/asam-opendrive-converter.git
+# Install from source (requires emsdk for WASM build)
+git clone --recurse-submodules https://github.com/lichtblick-suite/asam-opendrive-converter.git
 cd asam-opendrive-converter
 npm install
+npm run build:wasm   # compile C++ → WASM (one-time)
+npm run build        # bundle extension
 npm run local-install
 ```
 

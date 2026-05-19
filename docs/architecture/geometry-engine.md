@@ -2,7 +2,9 @@
 sidebar_position: 3
 ---
 
-# Geometry Engine
+# Geometry Engine (Interim)
+
+> **Note:** This TypeScript geometry engine is an interim implementation. It will be replaced by the [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE/) WASM module which handles all geometry types with guaranteed continuity and adaptive error-bounded sampling. See [Architecture Overview](/architecture/overview).
 
 The geometry engine evaluates OpenDRIVE reference line geometry types and produces 3D coordinates. All implementations follow ASAM OpenDRIVE V1.8.1 Chapter 9.
 

@@ -8,20 +8,28 @@ sidebar_position: 1
 
 - [Lichtblick](https://github.com/lichtblick-suite/lichtblick) (desktop or web)
 - An MCAP file with an OpenDRIVE map channel (e.g., from [OMEGA PRIME](https://github.com/ika-rwth-aachen/omega-prime))
-- Node.js 20+ (for building from source)
+- Node.js 20+ and npm 10+ (for building from source)
+- [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) (for building the WASM module)
 
 ## Installation
 
 ### From Source
 
 ```bash
-git clone https://github.com/lichtblick-suite/asam-opendrive-converter.git
+# Clone with submodules (includes libOpenDRIVE C++ library)
+git clone --recurse-submodules https://github.com/lichtblick-suite/asam-opendrive-converter.git
 cd asam-opendrive-converter
 npm install
+
+# Build WASM module (one-time, cached unless libOpenDRIVE changes)
+npm run build:wasm
+
+# Build the extension and install to local Lichtblick
+npm run build
 npm run local-install
 ```
 
-This builds the extension and installs it to your local Lichtblick installation.
+> **Note:** `npm run build:wasm` requires `emcmake` in PATH. See [Emscripten setup](https://emscripten.org/docs/getting_started/downloads.html).
 
 ### From Release
 

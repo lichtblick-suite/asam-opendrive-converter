@@ -52,7 +52,9 @@ Road markings from `<roadMark>` elements on each lane:
 
 **Entity ID pattern:** `odr_marking_r{roadId}_s{sectionIdx}_l{laneId}_{sOffset}`
 
-## Current Limitations
+## Current Limitations (Interim TypeScript Engine)
+
+These limitations will be resolved by the libOpenDRIVE WASM integration which handles all features natively:
 
 | Feature | Limitation |
 |---------|-----------|
@@ -61,5 +63,7 @@ Road markings from `<roadMark>` elements on each lane:
 | Road objects | Not implemented (barriers, poles, buildings) |
 | Road signals | Not implemented (signs, traffic lights) |
 | Superelevation | Not applied (roads appear flat) |
+| Lane offset | Not applied (center lane stays on reference line) |
+| Lane linkage | No cross-section continuity enforcement |
 
 See [Feature Mapping Table](/references/FEATURE_MAPPING_TABLE) for the complete gap analysis.

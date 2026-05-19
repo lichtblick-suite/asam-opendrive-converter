@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Converter Pipeline
 
-The converter pipeline transforms an OMEGA PRIME protobuf message into a Foxglove `SceneUpdate`. This page describes each stage.
+The converter pipeline transforms an OMEGA PRIME protobuf message into a Foxglove `SceneUpdate`. This page describes the current interim pipeline (pure TypeScript). Once the WASM integration is fully wired, Stages 2–3 will be replaced by a single call to `libOpenDRIVE.get_road_network_mesh()`.
 
 ## Stage 1: Message Deserialization
 
