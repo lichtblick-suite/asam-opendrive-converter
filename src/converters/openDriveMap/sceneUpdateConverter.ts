@@ -66,6 +66,7 @@
  * ============================================================================
  */
 
+import { SceneEntityDeletionType } from "@foxglove/schemas";
 import type { Time } from "@foxglove/schemas";
 
 import type { OpenDriveConverterSettings } from "./context";
@@ -117,7 +118,10 @@ const DEFAULT_EPS = 0.1;
 export function registerOpenDriveMapConverter(): (
   msg: MapAsamOpenDrive,
   event: { receiveTime: Time; topicConfig?: unknown },
-) => { deletions: []; entities: PartialSceneEntity[] } {
+) => {
+  deletions: { timestamp: Time; type: SceneEntityDeletionType; id: string }[];
+  entities: PartialSceneEntity[];
+} {
   const ctx = createOpenDriveConverterContext();
   let wasmModule: LibOpenDRIVEModule | undefined;
   let wasmLoading = false;
@@ -137,9 +141,23 @@ export function registerOpenDriveMapConverter(): (
       return { deletions: [], entities: ctx.cachedEntities };
     }
 
+    // When settings change, delete all previous entities so toggled-off
+    // features are removed from the 3D scene immediately.
+    const settingsChanged =
+      ctx.previousSettingsHash != undefined &&
+      ctx.previousSettingsHash !== settingsHash;
+    const timestamp: Time = event.receiveTime;
+    const deletions: {
+      timestamp: Time;
+      type: SceneEntityDeletionType;
+      id: string;
+    }[] = settingsChanged
+      ? [{ timestamp, type: SceneEntityDeletionType.ALL, id: "" }]
+      : [];
+
     const xmlContent = msg.open_drive_xml_content;
     if (!xmlContent) {
-      return { deletions: [], entities: [] };
+      return { deletions, entities: [] };
     }
 
     // Trigger async WASM load; return empty until module is ready
@@ -151,11 +169,10 @@ export function registerOpenDriveMapConverter(): (
           wasmLoading = false;
         });
       }
-      return { deletions: [], entities: [] };
+      return { deletions, entities: [] };
     }
 
     try {
-      const timestamp: Time = event.receiveTime; // always defined for received messages
       const entities = generateMapEntities(
         wasmModule,
         xmlContent,
@@ -167,10 +184,10 @@ export function registerOpenDriveMapConverter(): (
       ctx.previousMapReference = msg.map_reference ?? "";
       ctx.previousSettingsHash = settingsHash;
 
-      return { deletions: [], entities };
+      return { deletions, entities };
     } catch (error) {
       console.error("[OpenDRIVE Converter] Failed to process map:", error);
-      return { deletions: [], entities: [] };
+      return { deletions, entities: [] };
     }
   };
 }
