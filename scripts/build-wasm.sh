@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build libOpenDRIVE as a WASM module
-# Prerequisites: emsdk installed and activated (source emsdk_env.sh)
+# Prerequisites: emsdk installed (auto-detected from common locations)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,13 +10,35 @@ OUTPUT_DIR="${PROJECT_DIR}/src/wasm"
 
 echo "=== Building libOpenDRIVE WASM module ==="
 
-# Check emscripten is available
+# Auto-detect and source emsdk if not already in PATH
 if ! command -v emcmake &> /dev/null; then
-    echo "ERROR: emcmake not found. Install and activate emsdk first:"
-    echo "  git clone https://github.com/emscripten-core/emsdk.git"
-    echo "  cd emsdk && ./emsdk install latest && ./emsdk activate latest"
-    echo "  source emsdk_env.sh"
-    exit 1
+    EMSDK_LOCATIONS=(
+        "${EMSDK:-}"
+        "${HOME}/emsdk"
+        "${HOME}/.emsdk"
+        "/opt/emsdk"
+        "${PROJECT_DIR}/emsdk"
+    )
+    FOUND=false
+    for loc in "${EMSDK_LOCATIONS[@]}"; do
+        if [ -n "${loc}" ] && [ -f "${loc}/emsdk_env.sh" ]; then
+            echo "Sourcing emsdk from: ${loc}"
+            source "${loc}/emsdk_env.sh" 2>/dev/null
+            FOUND=true
+            break
+        fi
+    done
+
+    if ! $FOUND || ! command -v emcmake &> /dev/null; then
+        echo "ERROR: emcmake not found. Install and activate emsdk first:"
+        echo ""
+        echo "  git clone https://github.com/emscripten-core/emsdk.git ~/emsdk"
+        echo "  cd ~/emsdk && ./emsdk install latest && ./emsdk activate latest"
+        echo "  source ~/emsdk/emsdk_env.sh"
+        echo ""
+        echo "Or set EMSDK env var to your emsdk directory."
+        exit 1
+    fi
 fi
 
 # Ensure submodule is initialized
@@ -34,9 +56,13 @@ echo "Configuring..."
 cd "${BUILD_DIR}"
 emcmake cmake -DCMAKE_BUILD_TYPE=Release "${PROJECT_DIR}"
 
-# Build
-echo "Compiling..."
-emmake make -j"$(nproc)"
+# Build (limit parallelism — wasm-opt linking step has race conditions at high -j)
+JOBS=$(nproc)
+if [ "${JOBS}" -gt 4 ]; then
+    JOBS=4
+fi
+echo "Compiling (jobs=${JOBS})..."
+emmake make -j"${JOBS}"
 
 # Copy output to src/wasm/
 mkdir -p "${OUTPUT_DIR}"
