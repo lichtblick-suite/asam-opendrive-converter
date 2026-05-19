@@ -66,7 +66,7 @@ const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
   parseAttributeValue: true,
-  isArray: (_name: string, _jpath: string) => false,
+  isArray: (_name: string, _jpath: unknown, _isLeaf: boolean, _isAttr: boolean) => false,
   textNodeName: "#text",
   processEntities: false,
 });
