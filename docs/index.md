@@ -13,9 +13,11 @@ This extension enables visualization of OpenDRIVE road networks stored in [OMEGA
 
 - **Lane surfaces** — colored by lane type (driving, sidewalk, shoulder, etc.)
 - **Lane boundaries** — polyline edges between lanes
-- **Road markings** — colored center/edge lines
+- **Road markings** — colored center/edge lines with standard color mapping
+- **Road objects** — barriers, poles, buildings, vegetation [ODR §13]
+- **Road signals** — traffic signs and signals [ODR §14]
 
-The map is displayed statically in the 3D panel over the full duration of the recording.
+Geometry computation is handled by [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE), compiled to WebAssembly for in-browser execution.
 
 ## Key Features
 
@@ -25,6 +27,9 @@ The map is displayed statically in the 3D panel over the full duration of the re
 | Elevation profiles | Cubic polynomial elevation along reference line |
 | Lane model | Multi-section lanes with cubic width polynomials |
 | Road markings | Type-filtered with standard color mapping |
+| Road objects | Barriers, poles, buildings, vegetation |
+| Road signals | Traffic signs and signals |
+| WASM geometry | libOpenDRIVE compiled to WebAssembly |
 | Caching | Identical maps are computed once and reused |
 | Standards-based | All implementations reference ASAM OpenDRIVE V1.8.1 |
 

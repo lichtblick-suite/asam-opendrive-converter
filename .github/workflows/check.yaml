@@ -88,7 +88,6 @@ jobs:
 
       - name: Check linting
         run: npm run lint:ci
-        continue-on-error: true
 
       - name: Build Project
         run: npm run build

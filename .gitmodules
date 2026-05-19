@@ -1,4 +1,4 @@
 [submodule "submodule/libOpenDRIVE"]
 	path = submodule/libOpenDRIVE
-	url = git@github.com:lichtblick-suite/libOpenDRIVE.git
+	url = https://github.com/lichtblick-suite/libOpenDRIVE.git
 	branch = development

@@ -14,8 +14,8 @@
  * Lane colors are chosen for visual differentiation; road marking colors
  * approximate physical appearance per [ODR §11.8] e_roadMarkColor.
  *
- * ROAD_MARK_COLORS: Partial V1.8.1 coverage — orange, violet, black are
- * defined in e_roadMarkColor but NOT mapped here.
+ * ROAD_MARK_COLORS: Covers all e_roadMarkColor values from V1.8.1:
+ * standard, white, yellow, blue, green, red, orange, violet, black.
  *
  * Z-OFFSETS: Prevent z-fighting between coplanar layers in 3D rendering.
  * These are rendering artifacts — per [ODR], surfaces/markings are coplanar.
@@ -123,4 +123,4 @@ export const ROAD_SIGNAL_COLOR: RgbaColor = {
 };
 
 // Default chord error tolerance [libODR eps parameter]
-export const DEFAULT_STEP_SIZE = 0.1;
+// Used in sceneUpdateConverter.ts as DEFAULT_EPS

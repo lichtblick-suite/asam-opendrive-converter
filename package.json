@@ -29,7 +29,7 @@
     "lint": "eslint --report-unused-disable-directives --fix .",
     "local-install": "lichtblick-extension install",
     "package": "lichtblick-extension package",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "prepare": "husky"
   },
   "engines": {

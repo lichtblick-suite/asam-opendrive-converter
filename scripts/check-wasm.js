@@ -27,5 +27,5 @@ console.error("");
 console.error("Prerequisites: emsdk installed and activated");
 console.error("  git clone https://github.com/emscripten-core/emsdk.git");
 console.error("  cd emsdk && ./emsdk install latest && ./emsdk activate latest");
-console.error('  source emsdk_env.sh"');
+console.error("  source emsdk_env.sh");
 process.exit(1);

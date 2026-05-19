@@ -47,12 +47,7 @@ npm test -- --watch         # Watch mode
 npm test -- --coverage      # With coverage report
 ```
 
-Tests cover:
-- XML parsing (multiple OpenDRIVE fixture files)
-- Geometry evaluation (all 5 types + elevation)
-- Lane geometry (width accumulation, boundary computation)
-- Tessellation (triangle mesh generation)
-- Full converter pipeline (end-to-end)
+Test files go in `tests/**/*.spec.ts`. The test infrastructure is configured (Jest + ts-jest + jsdom) but the test suite has not been written yet.
 
 ## Code Style
 

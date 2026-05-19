@@ -244,6 +244,12 @@ function generateMapEntities(
     // [ODR §11.7] Get lane type per lane chunk for per-type coloring
     const laneTypeMap = wasm.getLaneTypeMap(odrMap, mesh.lanes_mesh);
 
+    // [ODR §11.8] Get roadmark color per chunk for per-type coloring
+    const roadmarkColorMap = wasm.getRoadmarkColorMap(
+      odrMap,
+      mesh.roadmarks_mesh,
+    );
+
     // [ODR §12] Identify junction connecting roads for distinct coloring
     const junctionRoadIdsVec = wasm.getJunctionRoadIds(odrMap);
     const junctionRoadIds = vectorToSet(junctionRoadIdsVec);
@@ -267,7 +273,13 @@ function generateMapEntities(
     }
 
     if (config.showRoadMarkings) {
-      entities.push(...buildRoadMarkEntities(mesh.roadmarks_mesh, timestamp));
+      entities.push(
+        ...buildRoadMarkEntities(
+          mesh.roadmarks_mesh,
+          roadmarkColorMap,
+          timestamp,
+        ),
+      );
     }
 
     if (config.showRoadObjects) {
@@ -283,6 +295,7 @@ function generateMapEntities(
     }
 
     laneTypeMap.delete();
+    roadmarkColorMap.delete();
     mesh.delete();
     return entities;
   } finally {
@@ -505,6 +518,7 @@ function buildLaneBoundaryEntities(
  */
 function buildRoadMarkEntities(
   roadmarksMesh: RoadmarksMesh,
+  roadmarkColorMap: EmscriptenMap<number, string>,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = roadmarksMesh.vertices;
@@ -559,7 +573,10 @@ function buildRoadMarkEntities(
       continue;
     }
 
-    const color = ROAD_MARK_COLORS["white"]!;
+    // [ODR §11.8] Color by roadmark color from the OpenDRIVE file
+    const markColorName = roadmarkColorMap.get(startIdx) ?? "standard";
+    const color =
+      ROAD_MARK_COLORS[markColorName] ?? ROAD_MARK_COLORS["standard"]!;
     const entityId = `odr_mark_r${roadId}_${ci.toString()}`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);

@@ -14,7 +14,6 @@ const sidebars: SidebarsConfig = {
       items: [
         "architecture/overview",
         "architecture/converter-pipeline",
-        "architecture/geometry-engine",
         "architecture/features",
       ],
     },
@@ -24,7 +23,6 @@ const sidebars: SidebarsConfig = {
       items: [
         "references/README",
         "references/FEATURE_MAPPING_TABLE",
-        "references/INTERFACE_MAPPING",
       ],
     },
     "contributing",

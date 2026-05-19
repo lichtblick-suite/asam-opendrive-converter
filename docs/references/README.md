@@ -71,7 +71,6 @@ developed and maintained by their respective standards organizations.
 | [`ASAM_OpenDRIVE_Standard.md`](./ASAM_OpenDRIVE_Standard.md) | Complete OpenDRIVE technical reference | ASAM OpenDRIVE V1.8.1 |
 | [`ASAM_OSI_Coordinate_System.md`](./ASAM_OSI_Coordinate_System.md) | OSI coordinate system & proto definitions | ASAM OSI V3.7.0, OMEGA PRIME |
 | [`Foxglove_SceneUpdate_Schema.md`](./Foxglove_SceneUpdate_Schema.md) | Foxglove visualization schema reference | foxglove-sdk |
-| [`INTERFACE_MAPPING.md`](./INTERFACE_MAPPING.md) | Deep analysis: OpenDRIVE → Engine → Foxglove | All standards |
 | [`FEATURE_MAPPING_TABLE.md`](./FEATURE_MAPPING_TABLE.md) | Full feature mapping: Standard → libOpenDRIVE → TS → Foxglove | All standards + libOpenDRIVE |
 
 ---
