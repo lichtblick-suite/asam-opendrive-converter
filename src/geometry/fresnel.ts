@@ -144,8 +144,9 @@ export function evaluateSpiral(
     return { x: 0, y: 0, hdg: 0 };
   }
 
-  // Use numerical integration (Simpson's rule) for robustness
-  const N = Math.min(256, Math.max(64, Math.ceil(ds)));
+  // Simpson's rule integration — step count scales with geometry length [ODR §9.4]
+  // to maintain consistent precision across the full spiral regardless of query point ds.
+  const N = Math.min(256, Math.max(64, Math.ceil(length)));
   const h = ds / N;
   let x = 0;
   let y = 0;
