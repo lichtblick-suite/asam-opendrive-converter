@@ -14,6 +14,8 @@ src/wasm/libOpenDRIVE.js
 # Test data — only committed fixtures are tracked:
 #   test-data/fabriksgatan.xodr — OpenDRIVE map for pedestrian scenario
 #   test-data/pedestrian_fabriksgatan.mcap — MCAP recording (pedestrian + map)
+#   test-data/combined_example.mcap — feature-rich combined MCAP (highway + intersection + signals)
+#   test-data/create_mcap.py — script to create MCAP from .xodr files
 test-data/*.osi
 test-data/osi_centerline_example.mcap
 test-data/e6mini.xodr
