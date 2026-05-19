@@ -4,49 +4,63 @@ sidebar_position: 2
 
 # Panel Settings
 
-The OpenDRIVE converter currently operates with sensible defaults. Future versions will expose panel settings for customization.
+The OpenDRIVE converter exposes panel settings in Lichtblick for feature-layer toggles and libOpenDRIVE tessellation control.
 
-## Current Defaults
+## Available Settings
 
-| Setting | Value | Description |
-|---------|-------|-------------|
-| Step size | 1.0 m | Distance between sample points along reference line |
-| Boundary line width | 0.1 m | Width of lane boundary lines |
-| Marking line width | 0.15 m | Width of road marking lines |
-| Boundary z-offset | +0.01 m | Slight elevation to prevent z-fighting with lane surface |
-| Marking z-offset | +0.02 m | Above boundary lines |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Show Lane Surfaces | `true` | Render lane meshes as `TriangleListPrimitive` entities |
+| Show Lane Boundaries | `true` | Render lane outlines as a `LinePrimitive` overlay |
+| Show Road Markings | `true` | Render road marks as filled triangle meshes |
+| Show Road Objects | `true` | Render OpenDRIVE road objects |
+| Show Road Signals | `true` | Render OpenDRIVE road signals |
+| Tessellation Tolerance (m) | `0.1` | libOpenDRIVE `eps` value; smaller values create denser meshes |
+
+When any setting changes, the converter emits `SceneEntityDeletion.ALL` before publishing the updated entities so hidden layers disappear immediately.
 
 ## Lane Color Mapping
 
-Lane surfaces are colored by their OpenDRIVE `e_laneType`:
+Lane surfaces are colored by OpenDRIVE lane type. The current palette includes:
 
-| Lane Type | Color | Hex |
-|-----------|-------|-----|
-| `driving` | Gray | `#808080` |
-| `sidewalk` | Light Blue | `#ADD8E6` |
-| `shoulder` | Green | `#90EE90` |
-| `border` | Dark Gray | `#505050` |
-| `parking` | Light Yellow | `#FFFACD` |
-| `biking` | Dark Green | `#228B22` |
-| `median` | Sandy Brown | `#F4A460` |
-| `curb` | Dim Gray | `#696969` |
-| Other | Medium Gray | `#A0A0A0` |
+| Lane Type | Color |
+|-----------|-------|
+| `driving`, `entry`, `exit`, `onRamp`, `offRamp`, `connectingRamp`, `slipLane` | dark asphalt gray |
+| `stop`, `restricted` | muted red |
+| `shoulder` | brown |
+| `biking` | green |
+| `sidewalk` | light gray |
+| `walking` | warm beige |
+| `border` | gray-brown |
+| `parking` | blue-gray |
+| `median` | olive green |
+| `curb` | stone gray |
+| `tram`, `rail` | purple-gray |
+| `bus` | slate blue |
+| `taxi` | olive |
+| `hov` | teal-gray |
+| `shared` | neutral gray |
+| `none` | transparent dark gray |
 
 ## Road Marking Colors
 
-| Mark Color | Rendered As |
-|------------|-------------|
-| `white` | White |
-| `yellow` | Yellow |
-| `blue` | Blue |
-| `green` | Green |
-| `red` | Red |
-| `orange` | Orange |
+The road-mark color map includes:
 
-## Caching
+- `standard`
+- `white`
+- `yellow`
+- `blue`
+- `green`
+- `red`
+- `orange`
+- `violet`
+- `black`
 
-The converter caches `SceneUpdate` results keyed by:
-- `map_reference` string (identifies which map file)
-- Rendering settings hash
+## Caching Behavior
 
-If the same map appears in multiple messages, it is only computed once.
+Rendered output is cached by:
+
+- `map_reference`
+- panel settings hash
+
+Changing the map or any setting creates a new cache entry; repeated messages with the same combination reuse the cached scene.

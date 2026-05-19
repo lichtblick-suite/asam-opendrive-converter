@@ -34,6 +34,7 @@ export interface OpenDriveConverterContext {
   previousSettingsHash: string | undefined;
 }
 
+/** Create a fresh converter context with empty cache. */
 export function createOpenDriveConverterContext(): OpenDriveConverterContext {
   return {
     cachedEntities: undefined,

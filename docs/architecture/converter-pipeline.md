@@ -4,70 +4,72 @@ sidebar_position: 2
 
 # Converter Pipeline
 
-The converter pipeline transforms an OMEGA PRIME protobuf message into a Foxglove `SceneUpdate`. This page describes the current interim pipeline (pure TypeScript). Once the WASM integration is fully wired, Stages 2–3 will be replaced by a single call to `libOpenDRIVE.get_road_network_mesh()`.
+The converter transforms an `osi3.MapAsamOpenDrive` message into a Foxglove `SceneUpdate` in four stages.
 
 ## Stage 1: Message Deserialization
 
 **File:** `src/utils/proto.ts`
 
-The MCAP message arrives as a protobuf-encoded `MapAsamOpenDrive` containing:
-- `map_reference` — identifier string for caching
-- `map_opendrive_xml` — the full OpenDRIVE XML document
+The incoming MCAP message is interpreted as:
 
-Reference: [OMEGA PRIME specification](https://github.com/ika-rwth-aachen/omega-prime)
+- `map_reference` — stable identifier for cache keys
+- `open_drive_xml_content` — embedded OpenDRIVE XML string
 
-## Stage 2: XML Parsing
+The converter uses the XML payload directly; there is no intermediate TypeScript road-model parser.
 
-**File:** `src/parser/parseOpenDriveXml.ts`
+## Stage 2: WASM Processing
 
-Uses `fast-xml-parser` to parse the XML into a typed `OpenDriveMap` object:
+**Files:** `src/wasm/index.ts`, `src/converters/openDriveMap/sceneUpdateConverter.ts`
 
-```typescript
-interface OpenDriveMap {
-  header: Header;
-  roads: Road[];
-  junctions: Junction[];
-}
-```
+`sceneUpdateConverter.ts` lazily loads libOpenDRIVE and calls:
 
-Each `Road` contains geometry records, elevation profiles, lane sections, and road markings — all typed per [ODR §9–§11].
+1. `createFromXml(xml, ...)`
+2. `get_road_network_mesh(eps)`
 
-## Stage 3: Geometry Computation
+libOpenDRIVE performs:
 
-**File:** `src/geometry/referenceLineGeometry.ts`
+- OpenDRIVE XML parsing
+- reference-line geometry evaluation
+- elevation, superelevation, crossfall, and lane offset application
+- lane, road marking, road object, and road signal mesh generation
 
-For each road, the reference line is evaluated at regular intervals (default 1m):
+The result is a `RoadNetworkMesh` containing feature-specific mesh chunks plus outline data.
 
-1. **Geometry evaluation** — Line/Arc/Spiral/Poly3/ParamPoly3 → local (x, y, hdg)
-2. **Local→global transform** — Rotate by start heading, translate to start position
-3. **Elevation** — Apply cubic elevation profile for z-coordinate
-4. **Lateral offset** — Offset perpendicular to heading by lane width accumulation
-
-Spiral geometry uses Simpson's rule numerical integration ([A&S §7.3]).
-
-## Stage 4: Feature Building
-
-**Files:** `src/features/lanes/`, `src/features/laneBoundaries/`, `src/features/roadMarkings/`
-
-Each feature builder produces `SceneEntity` objects:
-
-| Builder | Input | Output Primitive |
-|---------|-------|-----------------|
-| `buildLaneEntity` | Inner/outer boundary points | `TriangleListPrimitive` |
-| `buildLaneBoundaryEntity` | Boundary polyline | `LinePrimitive` (LINE_STRIP) |
-| `buildRoadMarkingEntity` | Mark polyline + color/width | `LinePrimitive` (LINE_STRIP) |
-
-## Stage 5: Assembly & Caching
+## Stage 3: Schema Adaptation
 
 **File:** `src/converters/openDriveMap/sceneUpdateConverter.ts`
 
-All entities are assembled into a single `SceneUpdate`:
+The TypeScript adapter converts WASM output into Foxglove primitives:
 
-```typescript
-{
-  deletions: [],
-  entities: [...laneEntities, ...boundaryEntities, ...markingEntities]
-}
+- lane meshes → `TriangleListPrimitive`
+- lane outline indices → `LinePrimitive`
+- road marking meshes → `TriangleListPrimitive`
+- road object meshes → `TriangleListPrimitive`
+- road signal meshes → `TriangleListPrimitive`
+
+Feature-specific builders group mesh chunks into `SceneEntity` objects with stable IDs, metadata, `frame_id="global"`, and persistent lifetimes.
+
+When panel settings change, the converter emits `SceneEntityDeletionType.ALL` before returning the newly selected layers.
+
+## Stage 4: Caching
+
+**File:** `src/converters/openDriveMap/context.ts`
+
+Generated entities are cached by:
+
+- `map_reference`
+- serialized panel settings hash
+
+If both values match the previous invocation, the converter returns the cached `SceneEntity[]` without re-running libOpenDRIVE.
+
+## End-to-End Summary
+
+```text
+MapAsamOpenDrive
+  → extract open_drive_xml_content
+  → createFromXml()
+  → get_road_network_mesh(eps)
+  → build SceneEntity layers
+  → cache by map_reference + settings hash
+  → return SceneUpdate
 ```
-
-The result is cached by `map_reference` so subsequent messages with the same map skip all computation.

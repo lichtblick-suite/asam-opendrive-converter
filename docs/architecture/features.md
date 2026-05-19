@@ -4,66 +4,79 @@ sidebar_position: 4
 
 # Features
 
-The converter produces three types of visual features from the OpenDRIVE map.
+All feature builders live in `src/converters/openDriveMap/sceneUpdateConverter.ts` and operate on mesh data returned by libOpenDRIVE WASM.
 
 ## Lane Surfaces
 
-**Builder:** `src/features/lanes/buildLaneEntity.ts`
+**Builder:** `buildLaneSurfaceEntities()`
 
-Each lane in each lane section produces a `SceneEntity` with a `TriangleListPrimitive`:
+This builder iterates `lanes_mesh.lane_start_indices` and creates one `SceneEntity` per lane chunk.
 
-1. Compute inner boundary (cumulative width of lanes closer to center)
-2. Compute outer boundary (inner + this lane's width)
-3. Tessellate the strip between inner and outer into triangles
-4. Flatten indexed mesh to non-indexed (Foxglove requirement)
+For each chunk it:
 
-**Color:** Determined by `e_laneType` — see [Panel Settings](/user-guide/panel-settings).
+1. collects the vertices and triangle indices that belong to the lane
+2. looks up the lane type for color selection
+3. applies junction coloring when the road is part of a junction
+4. emits a `TriangleListPrimitive`
 
-**Metadata:** Each lane entity carries:
-- `road_id` — OpenDRIVE road identifier
-- `lane_id` — Lane number (positive=left, negative=right)
-- `lane_type` — Lane type string
+**Entity ID pattern:** `odr_lane_r{roadId}_s{s0}_l{laneId}`
 
-**Entity ID pattern:** `odr_lane_r{roadId}_s{sectionIdx}_l{laneId}`
+**Metadata:** `road_id`, `lane_id`, `lane_type`, `junction`
 
 ## Lane Boundaries
 
-**Builder:** `src/features/laneBoundaries/buildLaneBoundaryEntity.ts`
+**Builder:** `buildLaneBoundaryEntities()`
 
-Each lane's outer boundary is rendered as a `LinePrimitive` (LINE_STRIP):
+This builder uses `lanes_mesh.get_lane_outline_indices()` to extract the lane outline graph and remaps it into a compact Foxglove `LinePrimitive`.
 
-- White color, 0.1m width
-- Z-offset of +0.01m above lane surface (prevents z-fighting)
-- `scale_invariant: false` — width is in world coordinates
+Current rendering characteristics:
 
-**Entity ID pattern:** `odr_boundary_r{roadId}_s{sectionIdx}_l{laneId}_outer`
+- one `SceneEntity` with ID `odr_lane_boundaries`
+- `type = LINE_LIST`
+- thickness `0.08 m`
+- z-offset `+0.01 m` to avoid z-fighting with lane surfaces
 
 ## Road Markings
 
-**Builder:** `src/features/roadMarkings/buildRoadMarkingEntity.ts`
+**Builder:** `buildRoadMarkEntities()`
 
-Road markings from `<roadMark>` elements on each lane:
+This builder iterates `roadmarks_mesh.roadmark_type_start_indices` and emits one `TriangleListPrimitive` per road-mark mesh chunk.
 
-- Filtered: `type="none"` is skipped
-- Rendered along the lane boundary between `sOffset` and next mark's start
-- Color from `e_roadMarkColor` mapping
-- Width from mark's `width` attribute (fallback: 0.15m)
-- Z-offset of +0.02m (above boundaries)
+Because the geometry comes from libOpenDRIVE, dashed and broken markings appear naturally as separate filled mesh segments with gaps between them.
 
-**Entity ID pattern:** `odr_marking_r{roadId}_s{sectionIdx}_l{laneId}_{sOffset}`
+**Entity ID pattern:** `odr_mark_r{roadId}_{chunkIndex}`
 
-## Current Limitations (Interim TypeScript Engine)
+**Metadata:** `road_id`, `mark_type`
 
-These limitations will be resolved by the libOpenDRIVE WASM integration which handles all features natively:
+## Road Objects
 
-| Feature | Limitation |
-|---------|-----------|
-| Dashed markings | Rendered as continuous lines (no length/space pattern) |
-| Center lane marks | Lane 0 road marks not processed |
-| Road objects | Not implemented (barriers, poles, buildings) |
-| Road signals | Not implemented (signs, traffic lights) |
-| Superelevation | Not applied (roads appear flat) |
-| Lane offset | Not applied (center lane stays on reference line) |
-| Lane linkage | No cross-section continuity enforcement |
+**Builder:** `buildRoadObjectEntities()`
 
-See [Feature Mapping Table](/references/FEATURE_MAPPING_TABLE) for the complete gap analysis.
+This builder iterates `road_objects_mesh.road_object_start_indices` and emits one `TriangleListPrimitive` per road object.
+
+Objects are rendered from libOpenDRIVE-generated meshes derived from OpenDRIVE object geometry and repeats.
+
+**Entity ID pattern:** `odr_obj_r{roadId}_{objectId}`
+
+**Metadata:** `road_id`, `object_id`
+
+## Road Signals
+
+**Builder:** `buildRoadSignalEntities()`
+
+This builder iterates `road_signals_mesh.road_signal_start_indices` and emits one `TriangleListPrimitive` per road signal.
+
+Signals are rendered as libOpenDRIVE-generated meshes with their pose already baked into the returned vertices.
+
+**Entity ID pattern:** `odr_signal_r{roadId}_{signalId}`
+
+**Metadata:** `road_id`, `signal_id`
+
+## Shared Rendering Conventions
+
+All generated entities use:
+
+- `frame_id="global"`
+- `frame_locked=true`
+- `lifetime={sec: 0, nsec: 0}`
+- `IDENTITY_POSE` with absolute OpenDRIVE inertial coordinates

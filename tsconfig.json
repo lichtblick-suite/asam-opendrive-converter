@@ -20,9 +20,6 @@
       "@utils/*": ["./src/utils/*"],
       "@converters": ["./src/converters/index.ts"],
       "@converters/*": ["./src/converters/*"],
-      "@features/*": ["./src/features/*"],
-      "@parser/*": ["./src/parser/*"],
-      "@geometry/*": ["./src/geometry/*"],
       "@config/*": ["./src/config/*"],
       "@/*": ["./src/*"]
     }

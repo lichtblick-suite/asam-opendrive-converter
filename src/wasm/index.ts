@@ -14,9 +14,13 @@ let modulePromise: Promise<LibOpenDRIVEModule> | undefined;
 
 /**
  * Get the libOpenDRIVE WASM module instance (lazy-loaded, cached singleton).
+ * If loading fails, the next call will retry.
  */
 export async function getLibOpenDRIVE(): Promise<LibOpenDRIVEModule> {
-  modulePromise ??= loadModule();
+  modulePromise ??= loadModule().catch((err: unknown) => {
+    modulePromise = undefined;
+    throw err;
+  });
   return await modulePromise;
 }
 

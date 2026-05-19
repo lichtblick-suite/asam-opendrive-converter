@@ -10,6 +10,7 @@ import type { PanelSettings, SettingsTreeAction } from "@lichtblick/suite";
 import type { OpenDriveConverterSettings } from "./context";
 import { DEFAULT_SETTINGS } from "./context";
 
+/** Generate panel settings for the 3D and Image panels (toggle layers, tessellation). */
 export function generateOpenDrive3DPanelSettings(): PanelSettings<OpenDriveConverterSettings> {
   return {
     settings: (config: OpenDriveConverterSettings | undefined) => ({

@@ -164,10 +164,16 @@ export function registerOpenDriveMapConverter(): (
     if (!wasmModule) {
       if (!wasmLoading) {
         wasmLoading = true;
-        void getLibOpenDRIVE().then((mod) => {
-          wasmModule = mod;
-          wasmLoading = false;
-        });
+        void getLibOpenDRIVE()
+          .then((mod) => {
+            wasmModule = mod;
+          })
+          .catch((err: unknown) => {
+            console.error("[OpenDRIVE Converter] WASM load failed:", err);
+          })
+          .finally(() => {
+            wasmLoading = false;
+          });
       }
       return { deletions, entities: [] };
     }

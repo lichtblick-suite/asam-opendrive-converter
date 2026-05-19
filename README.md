@@ -6,11 +6,13 @@ Visualizes ASAM OpenDRIVE road network maps from [OMEGA PRIME](https://github.co
 
 This extension registers a **message converter** that transforms `osi3.MapAsamOpenDrive` protobuf messages into `foxglove.SceneUpdate` scene entities. The OpenDRIVE map is rendered as:
 
-- **Lane surfaces** — Color-coded triangle meshes (driving=dark gray, sidewalk=light gray, etc.)
-- **Lane boundaries** — White lines along lane edges
-- **Road markings** — White/yellow lines matching marking type and color
+- **Lane surfaces** — color-coded triangle meshes (18 lane types)
+- **Lane boundaries** — white line segments along lane outlines
+- **Road markings** — filled polygon meshes with natural dash/gap patterns
+- **Road objects** — triangle meshes for OpenDRIVE road objects
+- **Road signals** — triangle meshes for OpenDRIVE signals
 
-The map is static — it is parsed once from the first message and cached for the duration of the recording.
+The map is static — it is processed once per unique `map_reference` + panel settings combination and then served from cache.
 
 ## Supported Input
 
@@ -19,23 +21,23 @@ The map is static — it is parsed once from the first message and cached for th
 | **Container** | MCAP files following the OMEGA PRIME specification |
 | **Topic** | `ground_truth_map` or `/ground_truth_map` |
 | **Schema** | `osi3.MapAsamOpenDrive` (protobuf) |
-| **Content** | OpenDRIVE 1.4+ XML embedded as a UTF-8 string |
+| **Content** | OpenDRIVE XML embedded as a UTF-8 string |
 
 ## Supported OpenDRIVE Elements
 
 | Element | Status |
 |---------|--------|
-| Road reference lines (line, arc, spiral, poly3, paramPoly3) | ✅ |
+| Road reference lines (line, arc, spiral, poly3, paramPoly3, cubic bezier) | ✅ |
 | Lane sections & lanes | ✅ |
-| Lane width polynomials | ✅ |
-| Lane types (driving, sidewalk, shoulder, etc.) | ✅ |
+| Lane width, border, offset, and height | ✅ |
+| Lane types (driving, sidewalk, shoulder, walking, shared, tram, rail, bus, taxi, hov, etc.) | ✅ |
 | Road markings (solid, broken, colors) | ✅ |
 | Lane boundaries | ✅ |
 | Elevation profile | ✅ |
+| Superelevation/crossfall | ✅ (handled by libOpenDRIVE) |
 | Junctions | ✅ |
-| Traffic signals & signs | ❌ (planned) |
-| Road objects (barriers, poles) | ❌ (planned) |
-| Superelevation/crossfall | ❌ (planned) |
+| Traffic signals & signs | ✅ |
+| Road objects (barriers, poles, etc.) | ✅ |
 
 ## Installation
 
@@ -84,7 +86,7 @@ All build commands are centralized in `package.json` — **CI and developers use
 
 | Command | Description |
 |---------|-------------|
-| `npm run build:wasm` | Compile libOpenDRIVE C++ → WASM via Emscripten (outputs `src/wasm/`) |
+| `npm run build:wasm` | Compile libOpenDRIVE C++ → single-file WASM JS bundle in `src/wasm/` |
 | `npm run build:wasm:check` | Verify WASM artifacts exist (fails fast if missing) |
 | `npm run build` | Full build: check WASM + bundle TypeScript extension |
 | `npm test` | Run Jest unit tests |
@@ -99,13 +101,13 @@ All build commands are centralized in `package.json` — **CI and developers use
 Phase 1: C++ → WASM (slow, cached)
 ┌────────────────────────────────────────────────────┐
 │  submodule/libOpenDRIVE/  →  emcmake/emmake        │
-│  + src/Embind.cpp         →  src/wasm/*.{js,wasm}  │
+│  + src/Embind.cpp         →  src/wasm/libOpenDRIVE.js │
 └────────────────────────────────────────────────────┘
   Cache key: submodule commit hash + CMakeLists.txt + Embind.cpp
 
 Phase 2: TypeScript → Extension (fast, always runs)
 ┌────────────────────────────────────────────────────┐
-│  src/**/*.ts + src/wasm/*  →  dist/extension.js    │
+│  src/**/*.ts + src/wasm/libOpenDRIVE.js → dist/extension.js │
 └────────────────────────────────────────────────────┘
 ```
 
@@ -122,10 +124,12 @@ The WASM build is cached both locally (artifacts persist in `src/wasm/`) and in 
 ### Panel Settings
 
 In the 3D panel topic settings, you can toggle:
-- **Show Lane Surfaces** — Toggle lane surface mesh rendering
-- **Show Lane Boundaries** — Toggle boundary line rendering
-- **Show Road Markings** — Toggle road marking rendering
-- **Tessellation Step Size** — Adjust geometry resolution (smaller = smoother, default: 1.0m)
+- **Show Lane Surfaces** — toggle lane surface mesh rendering
+- **Show Lane Boundaries** — toggle boundary line rendering
+- **Show Road Markings** — toggle road marking rendering
+- **Show Road Objects** — toggle road object rendering
+- **Show Road Signals** — toggle road signal rendering
+- **Tessellation Tolerance (m)** — adjust libOpenDRIVE mesh density (smaller = smoother, default: `0.1`)
 
 ## Development
 
@@ -177,22 +181,26 @@ asam-opendrive-converter/
 │   ├── build-wasm.sh           # Build WASM module (Phase 1)
 │   └── check-wasm.js           # Verify artifacts exist
 ├── src/
-│   ├── wasm/                   # WASM artifacts + TS types/loader
-│   │   ├── types.ts            # TypeScript interface for WASM module
-│   │   ├── index.ts            # Lazy-loading wrapper
-│   │   ├── libOpenDRIVE.js     # [generated] Emscripten glue
-│   │   └── libOpenDRIVE.wasm   # [generated] Compiled binary
 │   ├── index.ts                # Extension entry point (activate)
-│   ├── converters/             # Message converter registration + caching
-│   ├── parser/                 # OpenDRIVE XML → typed data (interim, to be replaced)
-│   ├── geometry/               # TS geometry engine (interim, to be replaced by WASM)
-│   ├── features/               # Scene entity builders (lanes, boundaries, markings)
-│   ├── config/                 # Constants, colors, entity ID prefixes
-│   └── utils/                  # Shared utilities (scene helpers, proto types)
+│   ├── config/
+│   │   └── constants.ts        # Colors, z-offsets, spec references
+│   ├── converters/
+│   │   ├── index.ts            # Re-exports
+│   │   └── openDriveMap/
+│   │       ├── context.ts      # Settings interface, caching context
+│   │       ├── panelSettings.ts # Panel UI toggles + handler
+│   │       └── sceneUpdateConverter.ts # Main: XML → WASM → SceneUpdate
+│   ├── utils/
+│   │   ├── proto.ts            # MapAsamOpenDrive interface
+│   │   └── scene.ts            # Foxglove SceneEntity helpers
+│   └── wasm/
+│       ├── index.ts            # Lazy WASM loader (singleton)
+│       ├── types.ts            # TypeScript interfaces for WASM module
+│       └── libOpenDRIVE.js     # [generated] WASM+JS (SINGLE_FILE)
 └── .github/workflows/check.yaml  # 2-phase CI (build-wasm → check)
 ```
 
-The C++ library (libOpenDRIVE) handles **all geometry computation** — reference line evaluation, lane boundaries, tessellation, road marks. TypeScript only maps the output meshes to Foxglove `SceneUpdate` schema.
+The C++ library (libOpenDRIVE) handles **all geometry computation** — reference lines, lane surfaces, boundaries, road markings, objects, signals, and lateral profiles. TypeScript loads the WASM module, adapts the returned mesh data, and publishes Foxglove `SceneUpdate` entities.
 
 ## License
 
