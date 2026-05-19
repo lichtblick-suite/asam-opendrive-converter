@@ -596,7 +596,6 @@ function buildLaneSurfaceEntities(
     entities.push(entity);
   }
 
-  laneKeys.delete();
   return entities;
 }
 
