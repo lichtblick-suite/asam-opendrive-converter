@@ -5,11 +5,12 @@
  * without requiring re-parse of the map data.
  */
 
+import type { PanelSettings, SettingsTreeAction } from "@lichtblick/suite";
+
 import type { OpenDriveConverterSettings } from "./context";
 import { DEFAULT_SETTINGS } from "./context";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function generateOpenDrive3DPanelSettings(): any {
+export function generateOpenDrive3DPanelSettings(): PanelSettings<OpenDriveConverterSettings> {
   return {
     settings: (config: OpenDriveConverterSettings | undefined) => ({
       fields: {
@@ -50,13 +51,16 @@ export function generateOpenDrive3DPanelSettings(): any {
       },
     }),
     handler: (
-      action: { action: string; payload: { path: string[]; value: unknown } },
-      config: OpenDriveConverterSettings,
+      action: SettingsTreeAction,
+      config?: OpenDriveConverterSettings,
     ) => {
-      if (action.action !== "update") {
+      if (action.action !== "update" || !config) {
         return;
       }
       const field = action.payload.path[2];
+      if (field == undefined) {
+        return;
+      }
       switch (field) {
         case "showLaneSurfaces":
           config.showLaneSurfaces = action.payload.value as boolean;
@@ -75,6 +79,8 @@ export function generateOpenDrive3DPanelSettings(): any {
           break;
         case "stepSize":
           config.stepSize = action.payload.value as number;
+          break;
+        default:
           break;
       }
     },

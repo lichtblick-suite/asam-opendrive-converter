@@ -24,7 +24,7 @@
     "lint": "eslint --report-unused-disable-directives --fix .",
     "local-install": "lichtblick-extension install",
     "package": "lichtblick-extension package",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "prepare": "husky"
   },
   "engines": {

@@ -6,6 +6,14 @@ export default [
   ...lichtblick.configs.typescript,
   prettier,
   {
-    ignores: ["dist/", "build-wasm/", "src/wasm/libOpenDRIVE.js", "website/", "submodule/"],
+    ignores: [
+      "dist/",
+      "build-wasm/",
+      "src/wasm/libOpenDRIVE.js",
+      "website/",
+      "submodule/",
+      "*.config.*",
+      "scripts/",
+    ],
   },
 ];

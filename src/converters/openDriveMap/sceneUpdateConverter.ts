@@ -68,6 +68,8 @@
 
 import type { Time } from "@foxglove/schemas";
 
+import type { OpenDriveConverterSettings } from "./context";
+import { createOpenDriveConverterContext, DEFAULT_SETTINGS } from "./context";
 import {
   BOUNDARY_Z_OFFSET,
   DEFAULT_LANE_COLOR,
@@ -98,9 +100,6 @@ import type {
   RoadSignalsMesh,
   Vec3D,
 } from "../../wasm/types";
-
-import type { OpenDriveConverterSettings } from "./context";
-import { createOpenDriveConverterContext, DEFAULT_SETTINGS } from "./context";
 
 /** Default chord error tolerance in meters [libODR eps parameter] */
 const DEFAULT_EPS = 0.1;
@@ -156,7 +155,7 @@ export function registerOpenDriveMapConverter(): (
     }
 
     try {
-      const timestamp: Time = event.receiveTime ?? { sec: 0, nsec: 0 };
+      const timestamp: Time = event.receiveTime; // always defined for received messages
       const entities = generateMapEntities(
         wasmModule,
         xmlContent,
@@ -333,9 +332,12 @@ function buildLaneSurfaceEntities(
       const i2 = indices.get(i + 2);
 
       if (
-        i0 >= startIdx && i0 < endIdx &&
-        i1 >= startIdx && i1 < endIdx &&
-        i2 >= startIdx && i2 < endIdx
+        i0 >= startIdx &&
+        i0 < endIdx &&
+        i1 >= startIdx &&
+        i1 < endIdx &&
+        i2 >= startIdx &&
+        i2 < endIdx
       ) {
         laneIndices.push(
           remapVertex(i0, vertexRemap, allPoints, lanePoints),
@@ -356,7 +358,7 @@ function buildLaneSurfaceEntities(
       : (LANE_COLORS[laneType] ?? DEFAULT_LANE_COLOR);
 
     // [FG-ENTITY] Stable entity ID per lane chunk
-    const entityId = `odr_lane_r${roadId}_s${s0.toFixed(2)}_l${laneId}`;
+    const entityId = `odr_lane_r${roadId}_s${s0.toFixed(2)}_l${laneId.toString()}`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
@@ -535,7 +537,7 @@ function buildRoadMarkEntities(
     }
 
     const color = ROAD_MARK_COLORS["white"]!;
-    const entityId = `odr_mark_r${roadId}_${ci}`;
+    const entityId = `odr_mark_r${roadId}_${ci.toString()}`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
@@ -685,8 +687,7 @@ function buildRoadSignalEntities(
   for (let si = 0; si < numSignals; si++) {
     const startIdx = sigKeys.get(si);
     const endIdx = si + 1 < numSignals ? sigKeys.get(si + 1) : numVerts;
-    const signalId =
-      signalsMesh.road_signal_start_indices.get(startIdx) ?? "";
+    const signalId = signalsMesh.road_signal_start_indices.get(startIdx) ?? "";
     const roadId = signalsMesh.get_road_id(startIdx);
 
     const sigPoints: Point3[] = [];
@@ -750,7 +751,7 @@ function extractVertices(
   zOffset = 0,
 ): Point3[] {
   const count = vertices.size();
-  const result: Point3[] = new Array(count);
+  const result: Point3[] = new Array<Point3>(count);
   for (let i = 0; i < count; i++) {
     const v = vertices.get(i);
     result[i] = { x: v[0], y: v[1], z: v[2] + zOffset };
@@ -766,7 +767,7 @@ function remapVertex(
   localPoints: Point3[],
 ): number {
   let localIdx = remap.get(globalIdx);
-  if (localIdx === undefined) {
+  if (localIdx == undefined) {
     localIdx = localPoints.length;
     localPoints.push(allPoints[globalIdx]!);
     remap.set(globalIdx, localIdx);

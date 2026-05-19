@@ -25,7 +25,7 @@ jobs:
         id: cache-wasm
         uses: actions/cache@v4
         with:
-          path: src/wasm/libOpenDRIVE.*
+          path: src/wasm/libOpenDRIVE.js
           key: wasm-${{ runner.os }}-${{ steps.submodule-hash.outputs.hash }}-${{ hashFiles('CMakeLists.txt', 'submodule/libOpenDRIVE/src/Embind.cpp') }}
 
       - name: Setup Emscripten
@@ -42,9 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wasm-artifacts
-          path: |
-            src/wasm/libOpenDRIVE.js
-            src/wasm/libOpenDRIVE.wasm
+          path: src/wasm/libOpenDRIVE.js
           retention-days: 7
 
   # Phase 2: TypeScript lint, test, build (depends on WASM)
