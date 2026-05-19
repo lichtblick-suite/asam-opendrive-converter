@@ -321,7 +321,7 @@ function generateMapEntities(
  * [libODR] Vertex layout: pairs (outer, inner) per s-sample.
  *   Triangle indices form 2-triangle quads. Winding is correct per lane side.
  *
- * [FG-ENTITY] Entity ID format: "odr_lane_{roadId}_s{s0}_l{laneId}"
+ * [FG-ENTITY] Entity ID format: "road.{roadId}.lanesection.{s0}.lane.{laneId}"
  *   Ensures stable upsert key per lane.
  */
 function buildLaneSurfaceEntities(
@@ -393,8 +393,8 @@ function buildLaneSurfaceEntities(
       ? JUNCTION_COLOR
       : (LANE_COLORS[laneType] ?? DEFAULT_LANE_COLOR);
 
-    // [FG-ENTITY] Stable entity ID per lane chunk
-    const entityId = `odr_lane_r${roadId}_s${s0.toFixed(2)}_l${laneId.toString()}`;
+    // [FG-ENTITY] Dot notation mirrors XODR hierarchy: road → laneSection → lane
+    const entityId = `road.${roadId}.lanesection.${s0.toFixed(2)}.lane.${laneId.toString()}`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
@@ -493,7 +493,7 @@ function buildLaneBoundaryEntities(
     const roadId = lanesMesh.get_road_id(startIdx);
     const laneId = lanesMesh.get_lane_id(startIdx);
     const s0 = lanesMesh.get_lanesec_s0(startIdx);
-    const entityId = `odr_boundary_r${roadId}_s${s0.toFixed(2)}_l${laneId.toString()}`;
+    const entityId = `road.${roadId}.lanesection.${s0.toFixed(2)}.lane.${laneId.toString()}.boundary`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.lines = [
@@ -599,7 +599,7 @@ function buildRoadMarkEntities(
     const markColorName = roadmarkColorMap.get(startIdx) ?? "standard";
     const color =
       ROAD_MARK_COLORS[markColorName] ?? ROAD_MARK_COLORS["standard"]!;
-    const entityId = `odr_mark_r${roadId}_${ci.toString()}`;
+    const entityId = `road.${roadId}.roadmark.${ci.toString()}`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
@@ -690,7 +690,7 @@ function buildRoadObjectEntities(
       continue;
     }
 
-    const entityId = `odr_obj_r${roadId}_${objectId}`;
+    const entityId = `road.${roadId}.object.${objectId}`;
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
       {
@@ -781,7 +781,7 @@ function buildRoadSignalEntities(
       continue;
     }
 
-    const entityId = `odr_signal_r${roadId}_${signalId}`;
+    const entityId = `road.${roadId}.signal.${signalId}`;
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
       {

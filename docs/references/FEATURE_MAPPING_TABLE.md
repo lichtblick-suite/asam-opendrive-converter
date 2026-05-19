@@ -120,7 +120,7 @@ This document maps OpenDRIVE features across four layers:
 | # | Feature | Foxglove Schema | Field Values | Source |
 |---|---------|----------------|-------------|--------|
 | 9.1 | **SceneUpdate** | `{ deletions, entities }` | Uses `SceneEntityDeletionType.ALL` when settings change | `sceneUpdateConverter.ts` |
-| 9.2 | **SceneEntity.id** | Stable upsert keys | Lane: `odr_lane_r{roadId}_s{s0}_l{laneId}`; boundaries: `odr_lane_boundaries`; marks: `odr_mark_r{roadId}_{chunk}`; objects: `odr_obj_r{roadId}_{objectId}`; signals: `odr_signal_r{roadId}_{signalId}` | `sceneUpdateConverter.ts` |
+| 9.2 | **SceneEntity.id** | Stable upsert keys using dot notation mirroring XODR hierarchy | Lane: `road.{roadId}.lanesection.{s0}.lane.{laneId}`; boundary: `road.{roadId}.lanesection.{s0}.lane.{laneId}.boundary`; marks: `road.{roadId}.roadmark.{chunk}`; objects: `road.{roadId}.object.{objectId}`; signals: `road.{roadId}.signal.{signalId}` | `sceneUpdateConverter.ts` |
 | 9.3 | **frame_id** | `"global"` | OpenDRIVE inertial frame maps directly to Foxglove world coordinates | `constants.ts`, `scene.ts` |
 | 9.4 | **lifetime** | `{sec:0, nsec:0}` | Persistent until replaced or deleted | `scene.ts` |
 | 9.5 | **frame_locked** | `true` | Anchors entities to the selected frame | `scene.ts` |

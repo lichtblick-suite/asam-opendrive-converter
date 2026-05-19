@@ -19,7 +19,7 @@ For each chunk it:
 3. applies junction coloring when the road is part of a junction
 4. emits a `TriangleListPrimitive`
 
-**Entity ID pattern:** `odr_lane_r{roadId}_s{s0}_l{laneId}`
+**Entity ID pattern:** `road.{roadId}.lanesection.{s0}.lane.{laneId}`
 
 **Metadata:** `road_id`, `lane_id`, `lane_type`, `junction`
 
@@ -31,7 +31,7 @@ This builder uses `lanes_mesh.get_lane_outline_indices()` to extract the lane ou
 
 Current rendering characteristics:
 
-- one `SceneEntity` per lane chunk with ID `odr_boundary_r{roadId}_s{s0}_l{laneId}`
+- one `SceneEntity` per lane chunk with ID `road.{roadId}.lanesection.{s0}.lane.{laneId}.boundary`
 - `type = LINE_LIST`
 - thickness `0.08 m`
 - z-offset `+0.01 m` to avoid z-fighting with lane surfaces
@@ -46,7 +46,7 @@ This builder iterates `roadmarks_mesh.roadmark_type_start_indices` and emits one
 
 Because the geometry comes from libOpenDRIVE, dashed and broken markings appear naturally as separate filled mesh segments with gaps between them.
 
-**Entity ID pattern:** `odr_mark_r{roadId}_{chunkIndex}`
+**Entity ID pattern:** `road.{roadId}.roadmark.{chunkIndex}`
 
 **Metadata:** `road_id`, `mark_type`
 
@@ -58,7 +58,7 @@ This builder iterates `road_objects_mesh.road_object_start_indices` and emits on
 
 Objects are rendered from libOpenDRIVE-generated meshes derived from OpenDRIVE object geometry and repeats.
 
-**Entity ID pattern:** `odr_obj_r{roadId}_{objectId}`
+**Entity ID pattern:** `road.{roadId}.object.{objectId}`
 
 **Metadata:** `road_id`, `object_id`
 
@@ -70,7 +70,7 @@ This builder iterates `road_signals_mesh.road_signal_start_indices` and emits on
 
 Signals are rendered as libOpenDRIVE-generated meshes with their pose already baked into the returned vertices.
 
-**Entity ID pattern:** `odr_signal_r{roadId}_{signalId}`
+**Entity ID pattern:** `road.{roadId}.signal.{signalId}`
 
 **Metadata:** `road_id`, `signal_id`
 
