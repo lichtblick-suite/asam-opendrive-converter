@@ -325,6 +325,30 @@ function generateMapEntities(
       );
     }
 
+    // Map-level metadata entity (proj4, coordinate offsets)
+    const mapInfoEntity = makeSceneEntity(
+      "map.info",
+      GLOBAL_FRAME_ID,
+      timestamp,
+    );
+    mapInfoEntity.metadata = [];
+    if (odrMap.proj4) {
+      mapInfoEntity.metadata.push({ key: "proj4", value: odrMap.proj4 });
+    }
+    if (odrMap.x_offs !== 0 || odrMap.y_offs !== 0) {
+      mapInfoEntity.metadata.push({
+        key: "x_offset",
+        value: String(odrMap.x_offs),
+      });
+      mapInfoEntity.metadata.push({
+        key: "y_offset",
+        value: String(odrMap.y_offs),
+      });
+    }
+    if (mapInfoEntity.metadata.length > 0) {
+      entities.push(mapInfoEntity);
+    }
+
     laneTypeMap.delete();
     roadmarkColorMap.delete();
     roadObjectMetadataMap.delete();
