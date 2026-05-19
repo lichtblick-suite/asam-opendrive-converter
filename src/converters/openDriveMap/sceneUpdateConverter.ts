@@ -1,8 +1,25 @@
 /**
  * Main converter: osi3.MapAsamOpenDrive → foxglove.SceneUpdate
  *
- * Parses the OpenDRIVE XML from the protobuf message, generates road geometry,
- * and produces scene entities for the 3D panel.
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [OMEGA]     OMEGA PRIME — defines osi3.MapAsamOpenDrive proto
+ *             https://github.com/ika-rwth-aachen/omega-prime
+ * [ODR]       ASAM OpenDRIVE V1.8.1
+ * [FG-SCENE]  Foxglove SceneUpdate / SceneEntity Schema
+ *
+ * PIPELINE:
+ * 1. Extract XML string from osi3.MapAsamOpenDrive [OMEGA]
+ * 2. Parse XML → OpenDriveMap data structure [ODR]
+ * 3. Compute lane geometry per road/section [ODR §9, §10, §11]
+ * 4. Build SceneEntity primitives [FG-SCENE]
+ * 5. Return SceneUpdate with all entities
+ *
+ * CACHING: The map is static per [OMEGA] convention (single message on
+ * /ground_truth_map topic). Results are cached by map_reference +
+ * panel settings hash and returned on subsequent converter calls.
+ * ============================================================================
  */
 
 import type { Time } from "@foxglove/schemas";

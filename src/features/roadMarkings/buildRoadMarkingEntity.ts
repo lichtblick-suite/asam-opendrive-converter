@@ -1,5 +1,26 @@
 /**
  * Build road marking line entities.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR §11.8]   Road markings — per-lane <roadMark> elements with sOffset,
+ *               type (e_roadMarkType), weight, color (e_roadMarkColor), width
+ * [FG-SCENE]    LinePrimitive — LINE_STRIP (type=0) for continuous polylines
+ *
+ * IMPLEMENTATION LIMITATIONS:
+ * - All marking types (solid, broken, solid solid, etc.) are rendered as a
+ *   single continuous LINE_STRIP — dashed/broken patterns are NOT implemented.
+ * - mark.sOffset affects only the entity ID, not the rendered start position.
+ * - weight, laneChange, <type>/<line>, <explicit>, and <sway> are not parsed.
+ * - Center-lane (lane 0) road marks are not rendered — only left/right lanes
+ *   are processed (see laneGeometry.ts).
+ *
+ * Z-OFFSET: Markings are at z + 0.02m (above both surface and boundaries).
+ *
+ * COLOR MAPPING: Partial V1.8.1 e_roadMarkColor support — standard, white,
+ * yellow, blue, green, red are mapped. orange, violet, black are NOT mapped.
+ * ============================================================================
  */
 
 import {

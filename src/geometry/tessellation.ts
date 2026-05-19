@@ -1,5 +1,20 @@
 /**
  * Tessellate lane surfaces into indexed triangle meshes for rendering.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [FG-SCENE]  Foxglove SceneUpdate / SceneEntity Schema
+ *             TriangleListPrimitive expects flat point triples (0-1-2, 3-4-5, ...)
+ * [ODR §11.6.1] Lane width — defines inner/outer boundary polylines
+ *
+ * DESIGN DECISION: Indexed → flattened pipeline
+ * Tessellation produces an indexed strip mesh (shared vertices, Uint32 indices)
+ * for memory efficiency during computation, then flattenTriangleMesh() expands
+ * it to the non-indexed format required by [FG-SCENE] TriangleListPrimitive.
+ * The vertex duplication overhead is ~2× for quad strips, which is acceptable
+ * for the lane geometry sizes encountered in practice.
+ * ============================================================================
  */
 
 import type { TriangleMesh, Vec3 } from "../parser/types";

@@ -1,5 +1,18 @@
 /**
  * Build lane boundary line entities.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR §11.6.1] Lane width — outer boundary = accumulated widths from center
+ * [FG-SCENE]    LinePrimitive — LINE_STRIP (type=0), scale_invariant=false
+ *               means thickness is in world coordinates
+ * [ODR §8.2]    Inertial coordinates — points are absolute x/y/z
+ *
+ * Z-OFFSET: Boundaries are rendered at z + 0.01m above the lane surface
+ * to prevent z-fighting in the 3D renderer. The actual road surface and
+ * boundaries are coplanar per [ODR].
+ * ============================================================================
  */
 
 import {

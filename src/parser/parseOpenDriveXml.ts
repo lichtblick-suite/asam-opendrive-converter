@@ -1,5 +1,21 @@
 /**
  * Parse an OpenDRIVE XML string into a typed OpenDriveMap data structure.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR]        ASAM OpenDRIVE V1.8.1 — XML schema (see docs/references/opendrive/xsd/)
+ * [ODR §8.5]   Geo-referencing — <geoReference> PROJ string, <offset> affine transform
+ *              (PARSED but NOT APPLIED in the rendering pipeline)
+ * [ODR §9.2-7] Geometry primitives — <line>, <arc>, <spiral>, <poly3>, <paramPoly3>
+ * [ODR §10.5.1] Elevation — <elevation> cubic polynomial records
+ * [ODR §11.3]  Lane sections — <laneSection> with left/center/right groups
+ * [ODR §11.6.1] Lane width — <width> cubic polynomial
+ * [ODR §11.8]  Road markings — <roadMark> type/color/width
+ * [ODR §12]    Junctions — <junction> with <connection> and <laneLink>
+ *
+ * NOTE: <laneOffset> [ODR §11.4] and <border> [ODR §11.6.2] are NOT parsed.
+ * ============================================================================
  */
 import { XMLParser } from "fast-xml-parser";
 

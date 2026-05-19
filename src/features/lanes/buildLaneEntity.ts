@@ -1,5 +1,21 @@
 /**
  * Build lane surface scene entities (TriangleListPrimitive).
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR §11.7.1] Lane type — e_laneType enum determines surface color
+ * [ODR §11.6.1] Lane width — inner/outer boundaries from width polynomials
+ * [FG-SCENE]    TriangleListPrimitive — flat point triples, non-indexed
+ * [ODR §8.2]    Inertial coordinates — points are absolute x/y/z
+ *
+ * Points are emitted in the OpenDRIVE inertial frame [ODR §8.2] using
+ * IDENTITY_POSE, which maps directly to Foxglove world coordinates
+ * without rotation or scaling (both frames are right-handed, Z-up).
+ *
+ * Metadata (road_id, lane_id, lane_type) is attached to lane surface
+ * entities only — not to boundaries or markings.
+ * ============================================================================
  */
 
 import type { RgbaColor } from "../../config/constants";

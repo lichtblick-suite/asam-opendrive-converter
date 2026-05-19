@@ -1,12 +1,41 @@
 /**
- * Fresnel integrals C(t) and S(t) used for Euler spiral (clothoid) evaluation.
- * Uses Taylor series expansion for small t and rational approximation for large t.
+ * Fresnel integrals and Euler spiral (clothoid) evaluation.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR §9.4]  Spiral geometry — linearly varying curvature (Euler spiral)
+ * [A&S]       Abramowitz, M. & Stegun, I.A. (1964). Handbook of Mathematical
+ *             Functions. NBS Applied Mathematics Series 55.
+ * [A&S §7.3]  Fresnel Integrals — definitions, series expansions, and
+ *             rational approximations.
+ * [A&S 7.3.1] C(t) = ∫₀ᵗ cos(π/2 · u²) du
+ * [A&S 7.3.2] S(t) = ∫₀ᵗ sin(π/2 · u²) du
+ * [A&S 7.3.26] Rational approximation for auxiliary function f(x)
+ * [A&S 7.3.27] Rational approximation for auxiliary function g(x)
+ *
+ * DESIGN DECISION: Simpson's rule vs. Fresnel integrals
+ * ============================================================================
+ * The spiral evaluator uses Simpson's rule numerical integration instead of
+ * the Fresnel integral closed form because:
+ * 1. [ODR §9.4] defines spirals with BOTH curvStart AND curvEnd, meaning
+ *    κ₀ ≠ 0 in general. The Fresnel integral form only applies to the
+ *    special case κ₀ = 0.
+ * 2. Simpson's rule handles the general case directly with configurable
+ *    precision (N ∈ [64, 256] steps).
+ * 3. This matches the approach used by libOpenDRIVE (odrSpiral.c).
+ *
+ * The Fresnel integral functions (taylorC, taylorS, rationalApprox) are
+ * retained for reference and for the pure clothoid special case.
  */
 
 /**
- * Compute Fresnel integrals S(t) and C(t) where:
+ * [A&S 7.3.1, 7.3.2] Compute Fresnel integrals S(t) and C(t) where:
  *   C(t) = ∫₀ᵗ cos(π/2 · u²) du
  *   S(t) = ∫₀ᵗ sin(π/2 · u²) du
+ *
+ * Uses Taylor series [A&S §7.3] for |t| ≤ 1.6 and rational approximation
+ * [A&S 7.3.26, 7.3.27] for |t| > 1.6.
  */
 export function fresnelIntegral(t: number): { c: number; s: number } {
   const sign = t < 0 ? -1 : 1;

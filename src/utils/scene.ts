@@ -1,5 +1,28 @@
 /**
- * Scene entity helper utilities.
+ * Scene entity helper utilities — Foxglove SceneUpdate type definitions.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [FG-SCENE]  Foxglove SceneUpdate / SceneEntity Schema
+ *             https://docs.foxglove.dev/docs/sdk/schemas/
+ * [FG-SDK]    foxglove/foxglove-sdk (canonical proto + TypeScript definitions)
+ *             https://github.com/foxglove/foxglove-sdk
+ *
+ * These types mirror the Foxglove schema definitions. The official types from
+ * @foxglove/schemas use Vector3 for Pose.position; here we use Point3 for
+ * both position and point arrays (structurally identical: {x, y, z}).
+ *
+ * IDENTITY_POSE: All primitives use identity pose (position=0, orientation=
+ * identity quaternion) because points contain absolute inertial coordinates
+ * per [ODR §8.2]. No rotation or translation is applied at the entity level.
+ *
+ * ZERO_TIME lifetime: {sec:0, nsec:0} means the entity persists until
+ * replaced or deleted — correct for static map data per [OMEGA] convention.
+ *
+ * frame_locked=true: Entity follows frame transforms. Combined with
+ * frame_id="global", this anchors the map in the world frame.
+ * ============================================================================
  */
 import type { Time } from "@foxglove/schemas";
 

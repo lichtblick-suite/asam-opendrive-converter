@@ -1,5 +1,22 @@
 /**
  * Compute lane boundary polylines by offsetting from the road reference line.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR]       ASAM OpenDRIVE V1.8.1
+ * [ODR §11.3] Lane sections — roads divided into sections along the s-axis
+ * [ODR §11.4] Lane offset — center lane lateral shift (NOT YET IMPLEMENTED)
+ * [ODR §11.6.1] Lane width — cubic polynomial w(ds) = a + b·ds + c·ds² + d·ds³
+ * [ODR §11.1] Lane numbering — center=0, left=+, right=−
+ * [ODR §8.3]  Road reference line coordinate system (s/t/h)
+ *
+ * DESIGN DECISION: Width accumulation without laneOffset
+ * Per [ODR §11.4], the center lane may be shifted from the reference line by
+ * a cubic polynomial <laneOffset>. This implementation does NOT apply
+ * laneOffset — it accumulates widths from the reference line directly.
+ * This is correct for files where <laneOffset> is absent or zero.
+ * ============================================================================
  */
 
 import type {
@@ -33,6 +50,11 @@ export interface LaneSurfaceData {
 /**
  * Compute lane boundary polylines for a single lane section.
  * Returns boundary data for each lane (inner + outer edge).
+ *
+ * Implements [ODR §11.3]: roads are divided into lane sections along the
+ * s-axis. Each section defines the lane configuration for a range of s values.
+ * Lanes are sorted per [ODR §11.1]: positive IDs (left) ascending from center,
+ * negative IDs (right) descending from center.
  */
 export function computeLaneSectionGeometry(
   laneSection: LaneSection,
@@ -150,6 +172,10 @@ function computeLaneGroupGeometry(
 
 /**
  * Evaluate lane width polynomial at a given ds (offset within lane section).
+ *
+ * Implements [ODR §11.6.1]: w(ds) = a + b·ds + c·ds² + d·ds³
+ * where ds = s − (s_section + sOffset). Multiple width records per lane
+ * are supported as piecewise polynomials.
  */
 export function evaluateLaneWidth(
   widthEntries: LaneWidth[],

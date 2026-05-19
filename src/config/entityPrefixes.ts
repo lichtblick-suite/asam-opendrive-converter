@@ -1,5 +1,9 @@
 /**
  * Entity ID prefix strings for stable, unique scene entity identification.
+ *
+ * [FG-SCENE] SceneEntity.id is the upsert key — entities with the same ID
+ * replace each other. The pattern `odr_{type}_r{roadId}_s{sectionIdx}_l{laneId}`
+ * ensures uniqueness per road/section/lane combination.
  */
 
 export const PREFIX_LANE_SURFACE = "odr_lane";

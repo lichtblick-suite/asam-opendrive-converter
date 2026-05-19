@@ -1,6 +1,36 @@
 /**
  * Evaluate reference line geometry at a given s-coordinate.
  * Supports: line, arc, spiral (clothoid), poly3, paramPoly3.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR]       ASAM OpenDRIVE V1.8.1
+ *             https://publications.pages.asam.net/standards/ASAM_OpenDRIVE/
+ * [ODR §8.3]  Road reference line coordinate system (s/t/h)
+ * [ODR §9.2]  Road reference line — planView geometry elements
+ * [ODR §9.3]  Straight line geometry primitive
+ * [ODR §9.4]  Spiral (Euler spiral / clothoid) geometry primitive
+ * [ODR §9.5]  Arc geometry primitive
+ * [ODR §9.6]  Parametric cubic curve (paramPoly3) geometry primitive
+ * [ODR §9.7]  Cubic polynomial (poly3) geometry primitive (deprecated)
+ * [ODR §10.5] Road elevation methods
+ * [ISO8855]   ISO 8855:2013-11 — right-handed inertial frame (x=East, y=North, z=Up)
+ *
+ * COORDINATE SYSTEM
+ * ============================================================================
+ * All geometry types are evaluated in a LOCAL coordinate frame (origin at the
+ * geometry start point, x-axis along the initial heading direction).
+ * The local result is then transformed to the INERTIAL coordinate frame
+ * [ODR §8.2] using a 2D rotation by the geometry's start heading [ODR §9.2]:
+ *
+ *   x_global = x₀ + cos(hdg₀)·x_local − sin(hdg₀)·y_local
+ *   y_global = y₀ + sin(hdg₀)·x_local + cos(hdg₀)·y_local
+ *   hdg_global = hdg₀ + hdg_local
+ *
+ * This inertial frame is identical to the OSI global frame and the Foxglove
+ * world frame — no further coordinate transformation is required.
+ * See docs/references/INTERFACE_MAPPING.md §6 "Coordinate Transformation Proof".
  */
 
 import type { ElevationElement, GeometryElement, Vec3 } from "../parser/types";
@@ -15,8 +45,12 @@ export interface PoseAtS {
 }
 
 /**
- * Evaluate the reference line position and heading at parameter `s`
+ * [ODR §9.2] Evaluate the reference line position and heading at parameter `s`
  * given the planView geometry elements and elevation profile.
+ *
+ * Each geometry element defines a local curve starting at (s₀, x₀, y₀, hdg₀).
+ * The curve is evaluated at ds = s − s₀ in the local frame, then transformed
+ * to inertial coordinates via the rotation matrix R(hdg₀).
  */
 export function evaluateReferenceLineAtS(
   planView: GeometryElement[],
@@ -47,7 +81,8 @@ export function evaluateReferenceLineAtS(
 }
 
 /**
- * Sample the reference line at regular intervals, returning a polyline.
+ * [ODR §9.2] Sample the reference line at regular intervals, returning a polyline.
+ * Ensures the endpoint at s=roadLength is always included to avoid gaps.
  */
 export function sampleReferenceLine(
   planView: GeometryElement[],
@@ -85,7 +120,9 @@ function findGeometryAtS(
 }
 
 /**
- * Evaluate geometry in local coordinate frame (origin at geometry start, x along initial heading).
+ * [ODR §9.2] Evaluate geometry in local coordinate frame.
+ * Origin is at geometry start, x-axis along initial heading direction.
+ * Each geometry type returns (x_local, y_local, hdg_local).
  */
 function evaluateGeometryLocal(
   geom: GeometryElement,
@@ -130,13 +167,22 @@ function evaluateGeometryLocal(
   }
 }
 
-// ─── Line ────────────────────────────────────────────────────────
+// ─── Line [ODR §9.3] ─────────────────────────────────────────────
+// [ODR §9.3] A straight line in the local u/v coordinate system.
+// x_local = ds, y_local = 0, hdg_local = 0.
+// The simplest geometry type — zero lateral deviation, zero heading change.
 
 function evaluateLine(ds: number): { x: number; y: number; hdg: number } {
   return { x: ds, y: 0, hdg: 0 };
 }
 
-// ─── Arc ─────────────────────────────────────────────────────────
+// ─── Arc [ODR §9.5] ──────────────────────────────────────────────
+// [ODR §9.5] A circular arc with constant curvature κ = 1/r.
+// Positive curvature = curve turning left; negative = right.
+//   θ(ds) = ds · κ
+//   x_local = r · sin(θ)
+//   y_local = r · (1 − cos(θ))
+//   hdg_local = θ
 
 function evaluateArc(
   ds: number,
@@ -154,7 +200,12 @@ function evaluateArc(
   };
 }
 
-// ─── Poly3 ───────────────────────────────────────────────────────
+// ─── Poly3 [ODR §9.7] (deprecated since OpenDRIVE 1.6) ──────────
+// [ODR §9.7] Cubic polynomial lateral offset: v(ds) = a + b·ds + c·ds² + d·ds³.
+// x_local = ds (arc-length approximation), y_local = v(ds).
+// Heading derived from tangent: hdg = atan2(dv/ds, 1).
+// DEPRECATION NOTE: [ODR §9.7] states this type is deprecated in favor of
+// paramPoly3 [ODR §9.6]. Retained for backward compatibility with ≤1.5 files.
 
 function evaluatePoly3(
   ds: number,
@@ -168,7 +219,13 @@ function evaluatePoly3(
   return { x: ds, y: v, hdg: Math.atan2(dvds, 1) };
 }
 
-// ─── ParamPoly3 ──────────────────────────────────────────────────
+// ─── ParamPoly3 [ODR §9.6] ────────────────────────────────────────
+// [ODR §9.6] Parametric cubic curve with two independent polynomials:
+//   u(p) = aU + bU·p + cU·p² + dU·p³   (longitudinal)
+//   v(p) = aV + bV·p + cV·p² + dV·p³   (lateral)
+// Parameter p depends on pRange attribute [ODR §9.6]:
+//   "arcLength"  → p = ds (arc length from geometry start)
+//   "normalized" → p = ds / L (normalized to [0, 1])
 
 function evaluateParamPoly3(
   ds: number,
@@ -195,7 +252,11 @@ function evaluateParamPoly3(
   return { x: u, y: v, hdg };
 }
 
-// ─── Elevation ───────────────────────────────────────────────────
+// ─── Elevation [ODR §10.5] ────────────────────────────────────────
+// [ODR §10.5] Road elevation is defined by cubic polynomials along the
+// reference line. Each record starts at a given s-coordinate:
+//   z(s) = a + b·ds + c·ds² + d·ds³, where ds = s − s_elevation
+// Multiple records are piecewise: the last record where s_rec ≤ s applies.
 
 export function evaluateElevation(
   elevationProfile: ElevationElement[],
@@ -219,8 +280,15 @@ export function evaluateElevation(
 }
 
 /**
- * Compute a point offset laterally from a reference line position.
- * Positive t = left (in road coordinates), negative t = right.
+ * [ODR §8.3] Compute a point offset laterally from a reference line position.
+ * In the road reference line coordinate system [ODR §8.3]:
+ *   - Positive t = left (in direction of increasing s)
+ *   - Negative t = right
+ * The normal direction is hdg + π/2, which points to the left of travel.
+ *
+ * This function maps from (s,t) road coordinates to (x,y,z) inertial
+ * coordinates [ODR §8.2], which pass directly to Foxglove Point3 without
+ * further transformation (see INTERFACE_MAPPING.md §6).
  */
 export function offsetPoint(pose: PoseAtS, t: number): Vec3 {
   const normalHdg = pose.hdg + Math.PI / 2;

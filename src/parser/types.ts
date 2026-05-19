@@ -1,6 +1,26 @@
 /**
  * TypeScript type definitions for the OpenDRIVE data model.
- * Covers the subset of OpenDRIVE 1.4+ needed for road network visualization.
+ * Covers the subset of OpenDRIVE V1.8.1 needed for road network visualization.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR]        ASAM OpenDRIVE V1.8.1
+ * [ODR §8.2]   Inertial coordinate system (x=East, y=North, z=Up)
+ * [ODR §8.3]   Road reference line coordinate system (s/t/h)
+ * [ODR §8.5]   Geo-referencing (<geoReference>, <offset>)
+ * [ODR §9.2-7] Geometry primitives (line, spiral, arc, paramPoly3, poly3)
+ * [ODR §10.5.1] Road elevation — cubic polynomial z(s)
+ * [ODR §11.1]  Lane numbering — center=0, left=+, right=−
+ * [ODR §11.3]  Lane sections — piecewise along s-axis
+ * [ODR §11.6.1] Lane width — cubic polynomial w(ds)
+ * [ODR §11.7.1] Lane type — e_laneType enumeration
+ * [ODR §11.8]  Road markings — e_roadMarkType, e_roadMarkColor
+ * [ODR §12]    Junctions — connections with incoming/connecting roads
+ *
+ * NOTE: LaneType enum is partial — V1.8.1 adds `walking` (replacing
+ * deprecated `sidewalk`) and `slipLane`, which are not yet included here.
+ * ============================================================================
  */
 
 // ─── Top-Level Map ───────────────────────────────────────────────

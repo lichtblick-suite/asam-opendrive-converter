@@ -1,5 +1,24 @@
 /**
  * Rendering constants: colors, sizes, default parameters.
+ *
+ * ============================================================================
+ * SPECIFICATION REFERENCES
+ * ============================================================================
+ * [ODR §11.7.1] Lane type — e_laneType values determine LANE_COLORS keys
+ * [ODR §11.8]   Road markings — e_roadMarkColor determines ROAD_MARK_COLORS
+ * [FG-SCENE]    Foxglove SceneUpdate — Color channels are float64 in [0, 1]
+ * [ODR §8.2]    GLOBAL_FRAME_ID = "global" maps to inertial frame
+ *
+ * COLOR VALUES: These are visualization choices, not standard-prescribed.
+ * Lane colors are chosen for visual differentiation; road marking colors
+ * approximate physical appearance per [ODR §11.8] e_roadMarkColor.
+ *
+ * ROAD_MARK_COLORS: Partial V1.8.1 coverage — orange, violet, black are
+ * defined in e_roadMarkColor but NOT mapped here.
+ *
+ * Z-OFFSETS: Prevent z-fighting between coplanar layers in 3D rendering.
+ * These are rendering artifacts — per [ODR], surfaces/markings are coplanar.
+ * ============================================================================
  */
 
 export interface RgbaColor {
