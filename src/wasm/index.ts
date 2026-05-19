@@ -1,6 +1,11 @@
 /**
  * Lazy-loading wrapper for the libOpenDRIVE WASM module.
  * Loads the module on first use and caches the instance.
+ *
+ * [libODR] The WASM binary (~400-500KB) contains the full libOpenDRIVE C++
+ *   library compiled via Emscripten. It handles all OpenDRIVE geometry
+ *   computation natively — no TypeScript geometry reimplementation needed.
+ * [EMB] Module is ES module format (-sEXPORT_ES6=1 -sMODULARIZE=1)
  */
 
 import type { LibOpenDRIVEModule, CreateLibOpenDRIVE } from "./types";
@@ -8,8 +13,7 @@ import type { LibOpenDRIVEModule, CreateLibOpenDRIVE } from "./types";
 let modulePromise: Promise<LibOpenDRIVEModule> | undefined;
 
 /**
- * Get the libOpenDRIVE WASM module instance (lazy-loaded, cached).
- * The WASM binary (~300-500KB) is loaded on first call only.
+ * Get the libOpenDRIVE WASM module instance (lazy-loaded, cached singleton).
  */
 export async function getLibOpenDRIVE(): Promise<LibOpenDRIVEModule> {
   modulePromise ??= loadModule();
@@ -17,8 +21,6 @@ export async function getLibOpenDRIVE(): Promise<LibOpenDRIVEModule> {
 }
 
 async function loadModule(): Promise<LibOpenDRIVEModule> {
-  // Dynamic import of the Emscripten-generated JS loader
-
   const createModule = (await import(
     /* webpackChunkName: "libOpenDRIVE" */
     "./libOpenDRIVE.js"
@@ -32,4 +34,6 @@ export {
   type LibOpenDRIVEModule,
   type OpenDriveMap,
   type RoadNetworkMesh,
+  type LanesMesh,
+  type RoadmarksMesh,
 } from "./types";

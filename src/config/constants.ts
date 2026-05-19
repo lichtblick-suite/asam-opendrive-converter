@@ -4,10 +4,11 @@
  * ============================================================================
  * SPECIFICATION REFERENCES
  * ============================================================================
- * [ODR §11.7.1] Lane type — e_laneType values determine LANE_COLORS keys
- * [ODR §11.8]   Road markings — e_roadMarkColor determines ROAD_MARK_COLORS
- * [FG-SCENE]    Foxglove SceneUpdate — Color channels are float64 in [0, 1]
- * [ODR §8.2]    GLOBAL_FRAME_ID = "global" maps to inertial frame
+ * [ODR §11.7]  Lane type — e_laneType values determine LANE_COLORS keys
+ * [ODR §11.8]  Road markings — e_roadMarkColor determines ROAD_MARK_COLORS
+ * [FG-SCENE]   Foxglove SceneUpdate — Color channels are float64 in [0, 1]
+ * [ODR §8.2]   GLOBAL_FRAME_ID = "global" maps to inertial frame
+ * [ODR §12]    Junctions — JUNCTION_COLOR for connecting road surfaces
  *
  * COLOR VALUES: These are visualization choices, not standard-prescribed.
  * Lane colors are chosen for visual differentiation; road marking colors
@@ -28,7 +29,7 @@ export interface RgbaColor {
   a: number;
 }
 
-// Lane surface colors by type
+// Lane surface colors by type [ODR §11.7 e_laneType]
 export const LANE_COLORS: Record<string, RgbaColor> = {
   driving: { r: 0.35, g: 0.35, b: 0.38, a: 0.85 },
   stop: { r: 0.5, g: 0.2, b: 0.2, a: 0.85 },
@@ -55,7 +56,7 @@ export const DEFAULT_LANE_COLOR: RgbaColor = {
   a: 0.7,
 };
 
-// Junction areas
+// Junction areas [ODR §12]
 export const JUNCTION_COLOR: RgbaColor = {
   r: 0.35,
   g: 0.35,
@@ -73,7 +74,7 @@ export const LANE_BOUNDARY_COLOR: RgbaColor = {
 
 export const LANE_BOUNDARY_WIDTH = 0.08;
 
-// Road marking colors
+// Road marking colors [ODR §11.8 e_roadMarkColor]
 export const ROAD_MARK_COLORS: Record<string, RgbaColor> = {
   standard: { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
   white: { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
@@ -85,13 +86,13 @@ export const ROAD_MARK_COLORS: Record<string, RgbaColor> = {
 
 export const ROAD_MARK_WIDTH = 0.15;
 
-// Tessellation resolution
-export const DEFAULT_STEP_SIZE = 1.0; // meters between sample points
-
-// Frame
+// Frame [ODR §8.2] — OpenDRIVE inertial frame = Foxglove global frame
 export const GLOBAL_FRAME_ID = "global";
 
-// Z-offset to prevent z-fighting between overlapping layers
+// Z-offsets to prevent z-fighting between overlapping layers
 export const LANE_Z_OFFSET = 0.0;
 export const BOUNDARY_Z_OFFSET = 0.01;
 export const MARKING_Z_OFFSET = 0.02;
+
+// Default chord error tolerance [libODR eps parameter]
+export const DEFAULT_STEP_SIZE = 0.1;

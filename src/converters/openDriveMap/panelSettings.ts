@@ -1,5 +1,8 @@
 /**
  * Panel settings for the OpenDRIVE map converter.
+ *
+ * [FG-SCENE] Panel settings allow user control over rendering parameters
+ * without requiring re-parse of the map data.
  */
 
 import type { OpenDriveConverterSettings } from "./context";
@@ -27,12 +30,12 @@ export function generateOpenDrive3DPanelSettings(): any {
           value: config?.showRoadMarkings ?? DEFAULT_SETTINGS.showRoadMarkings,
         },
         stepSize: {
-          label: "Tessellation Step Size (m)",
+          label: "Tessellation Tolerance (m)",
           input: "number" as const,
           value: config?.stepSize ?? DEFAULT_SETTINGS.stepSize,
-          min: 0.1,
-          max: 10,
-          step: 0.1,
+          min: 0.01,
+          max: 5.0,
+          step: 0.01,
         },
       },
     }),
