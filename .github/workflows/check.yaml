@@ -28,18 +28,18 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Audit Dependencies
         run: npm audit
         continue-on-error: true
 
       - name: Test Project
-        run: npm run test
+        run: npx jest
 
       - name: Check linting
-        run: npm run lint:ci
+        run: npx eslint --report-unused-disable-directives .
         continue-on-error: true
 
       - name: Build Project
-        run: npm run build
+        run: npx lichtblick-extension build
