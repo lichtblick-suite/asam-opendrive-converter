@@ -43,6 +43,7 @@ graph TD
 - **`src/utils/proto.ts`** — defines the `MapAsamOpenDrive` message shape used by the converter.
 - **`src/wasm/`** — lazy-loads the generated libOpenDRIVE module and exposes TypeScript typings for the Emscripten bindings.
 - **`src/converters/openDriveMap/sceneUpdateConverter.ts`** — drives the XML → WASM → `SceneUpdate` conversion and builds Foxglove entities for all feature layers.
+- **`src/converters/openDriveMap/meshUtils.ts`** — mesh utility functions: vertex extraction, index partitioning (O(N log M)), vertex remapping with bounds safety.
 - **`src/converters/openDriveMap/context.ts`** — stores the cache key (`map_reference` + settings hash) and cached entities.
 - **`src/converters/openDriveMap/panelSettings.ts`** — exposes layer toggles plus tessellation tolerance.
 - **`src/utils/scene.ts`** — provides Foxglove primitive helpers and shared entity defaults.
@@ -58,6 +59,7 @@ src/
 │   ├── index.ts
 │   └── openDriveMap/
 │       ├── context.ts
+│       ├── meshUtils.ts
 │       ├── panelSettings.ts
 │       └── sceneUpdateConverter.ts
 ├── utils/

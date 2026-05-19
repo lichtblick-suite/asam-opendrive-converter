@@ -79,6 +79,9 @@ jobs:
       - name: Verify WASM artifacts
         run: npm run build:wasm:check
 
+      - name: Type Check
+        run: npx tsc --noEmit
+
       - name: Audit Dependencies
         run: npm audit
 

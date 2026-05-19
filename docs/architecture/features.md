@@ -21,7 +21,7 @@ For each chunk it:
 
 **Entity ID pattern:** `road.{roadId}.lanesection.{s0}.lane.{laneId}`
 
-**Metadata:** `road_id`, `lane_id`, `lane_type`, `junction`
+**Metadata:** `road_id`, `lane_id`, `lane_type`, `junction`, `road_name`, `road_length`, `speed_limit`, `road_type`, `predecessor`, `successor`, `lane_predecessor`, `lane_successor`
 
 ## Lane Boundaries
 
@@ -46,9 +46,9 @@ This builder iterates `roadmarks_mesh.roadmark_type_start_indices` and emits one
 
 Because the geometry comes from libOpenDRIVE, dashed and broken markings appear naturally as separate filled mesh segments with gaps between them.
 
-**Entity ID pattern:** `road.{roadId}.roadmark.{chunkIndex}`
+**Entity ID pattern:** `road.{roadId}.roadmark.{startIdx}`
 
-**Metadata:** `road_id`, `mark_type`
+**Metadata:** `road_id`, `mark_type`, `weight`, `lane_change`, `width`
 
 ## Road Objects
 
@@ -60,7 +60,7 @@ Objects are rendered from libOpenDRIVE-generated meshes derived from OpenDRIVE o
 
 **Entity ID pattern:** `road.{roadId}.object.{objectId}`
 
-**Metadata:** `road_id`, `object_id`
+**Metadata:** `road_id`, `object_id`, `type`, `name`, `subtype`, `orientation`, `dynamic`, `width`, `height`, `length`, `s`, `t`
 
 ## Road Signals
 
@@ -72,7 +72,7 @@ Signals are rendered as libOpenDRIVE-generated meshes with their pose already ba
 
 **Entity ID pattern:** `road.{roadId}.signal.{signalId}`
 
-**Metadata:** `road_id`, `signal_id`
+**Metadata:** `road_id`, `signal_id`, `name`, `country`, `type`, `subtype`, `value`, `text`, `dynamic`, `height`, `width`, `orientation`
 
 ## Shared Rendering Conventions
 
