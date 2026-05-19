@@ -8,23 +8,19 @@ const path = require("path");
 
 const wasmDir = path.join(__dirname, "..", "src", "wasm");
 const jsFile = path.join(wasmDir, "libOpenDRIVE.js");
-const wasmFile = path.join(wasmDir, "libOpenDRIVE.wasm");
 
 const jsExists = fs.existsSync(jsFile);
-const wasmExists = fs.existsSync(wasmFile);
 
-if (jsExists && wasmExists) {
+if (jsExists) {
   const jsSize = fs.statSync(jsFile).size;
-  const wasmSize = fs.statSync(wasmFile).size;
   console.log(
-    `✓ WASM artifacts present (js: ${(jsSize / 1024).toFixed(0)}KB, wasm: ${(wasmSize / 1024).toFixed(0)}KB)`,
+    `✓ WASM artifact present (js+wasm: ${(jsSize / 1024).toFixed(0)}KB)`,
   );
   process.exit(0);
 }
 
-console.error("✗ WASM artifacts missing:");
-if (!jsExists) console.error(`  - ${jsFile}`);
-if (!wasmExists) console.error(`  - ${wasmFile}`);
+console.error("✗ WASM artifact missing:");
+console.error(`  - ${jsFile}`);
 console.error("");
 console.error("Run: npm run build:wasm");
 console.error("");

@@ -81,10 +81,11 @@ if(EMSCRIPTEN)
         -O2
         # No exception catching for smaller bundle
         -sDISABLE_EXCEPTION_CATCHING=1
-        # Environment: web, worker, and node (node needed for tests)
-        -sENVIRONMENT=web,worker,node
-        # Keep WASM as separate file (not embedded in JS)
-        -sSINGLE_FILE=0
+        # Environment: web and worker only (no Node.js — avoids node:module import)
+        -sENVIRONMENT=web,worker
+        # Embed WASM binary in JS as base64 (avoids URL resolution issues
+        # in Lichtblick extension sandbox where publicPath is unavailable)
+        -sSINGLE_FILE=1
     )
 else()
     message(FATAL_ERROR "This CMakeLists.txt is for Emscripten WASM builds only. Use: emcmake cmake .")

@@ -64,14 +64,15 @@ else
     emmake make -j"$(nproc)"
 fi
 
-# Copy output to src/wasm/
+# Copy output to src/wasm/ (SINGLE_FILE=1 embeds WASM in JS, no separate .wasm)
 mkdir -p "${OUTPUT_DIR}"
 cp "${BUILD_DIR}/libOpenDRIVE.js" "${OUTPUT_DIR}/"
-cp "${BUILD_DIR}/libOpenDRIVE.wasm" "${OUTPUT_DIR}/"
+# Remove stale .wasm file if present from prior builds
+rm -f "${OUTPUT_DIR}/libOpenDRIVE.wasm"
 
 echo ""
 echo "=== Build complete ==="
 echo "Output files:"
-ls -lh "${OUTPUT_DIR}/libOpenDRIVE.js" "${OUTPUT_DIR}/libOpenDRIVE.wasm"
+ls -lh "${OUTPUT_DIR}/libOpenDRIVE.js"
 echo ""
 echo "WASM module ready at: ${OUTPUT_DIR}/"
