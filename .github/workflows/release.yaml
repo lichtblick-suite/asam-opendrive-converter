@@ -1,0 +1,109 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type the version from package.json (e.g. 0.1.0) to confirm release"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Extract and validate version
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="v${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+          confirm="${{ github.event.inputs.confirm }}"
+          confirm="${confirm#v}"
+          if [ "${confirm}" != "${version}" ]; then
+            echo "::error::Confirmation input '${confirm}' does not match package.json version '${version}'"
+            exit 1
+          fi
+          if git ls-remote --tags origin | grep -q "refs/tags/${tag}$"; then
+            echo "::error::Tag '${tag}' already exists on remote. Bump the version in package.json first."
+            exit 1
+          fi
+          echo "✅ Version '${version}' confirmed, tag '${tag}' does not exist yet"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git"
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Switch to main branch
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Generate changelog for this release
+        uses: janheinrichmerker/action-github-changelog-generator@v2.4
+        with:
+          token: ${{ secrets.LICHTBLICK_GITHUB_TOKEN }}
+
+      - name: Commit updated CHANGELOG.md
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git"
+          git add CHANGELOG.md
+          git diff --cached --quiet && echo "No changelog changes to commit" || {
+            git commit -m "docs: update CHANGELOG for ${{ steps.version.outputs.tag }} [skip ci]"
+            git push origin main
+          }
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Package
+        run: npm run package
+
+      - name: Download ScanCode Toolkit
+        run: |
+          curl -L -o scancode-toolkit.tar.gz https://github.com/aboutcode-org/scancode-toolkit/releases/download/v32.3.0/scancode-toolkit-v32.3.0_py3.12-linux.tar.gz
+          mkdir -p scancode-toolkit
+          tar -xzf scancode-toolkit.tar.gz -C scancode-toolkit --strip-components=1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Run ScanCode
+        run: |
+          cd scancode-toolkit
+          ./scancode --json-pp ../scancode-result.json ../
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: "plu5/automatic-releases-with-sha-action@main"
+        with:
+          repo_token: "${{ secrets.PAT_TOKEN }}"
+          automatic_release_tag: ${{ steps.version.outputs.tag }}
+          prerelease: false
+          title: ASAM OpenDRIVE Converter ${{ steps.version.outputs.tag }}
+          files: |
+            CHANGELOG.md
+            scancode-result.json
+            lichtblick.asam-opendrive-converter-${{ steps.version.outputs.version }}.foxe

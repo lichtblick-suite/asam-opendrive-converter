@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+website/build/
+website/.docusaurus/
 
 # Test data (downloaded, not committed)
 test-data/*.mcap

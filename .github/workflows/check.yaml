@@ -1,0 +1,45 @@
+name: check
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: "*"
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate package.json
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Audit Dependencies
+        run: npm audit
+        continue-on-error: true
+
+      - name: Test Project
+        run: npm run test
+
+      - name: Check linting
+        run: npm run lint:ci
+        continue-on-error: true
+
+      - name: Build Project
+        run: npm run build
