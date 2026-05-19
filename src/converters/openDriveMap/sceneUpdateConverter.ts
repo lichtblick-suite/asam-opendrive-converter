@@ -68,6 +68,13 @@
 
 import { SceneEntityDeletionType } from "@foxglove/schemas";
 import type { Time } from "@foxglove/schemas";
+import type {
+  Immutable,
+  MessageConverterAlert,
+  MessageConverterContext,
+  MessageEvent,
+  VariableValue,
+} from "@lichtblick/suite";
 
 import type { OpenDriveConverterSettings } from "./context";
 import { createOpenDriveConverterContext, DEFAULT_SETTINGS } from "./context";
@@ -117,7 +124,9 @@ const DEFAULT_EPS = 0.1;
  */
 export function registerOpenDriveMapConverter(): (
   msg: MapAsamOpenDrive,
-  event: { receiveTime: Time; topicConfig?: unknown },
+  event: Immutable<MessageEvent<MapAsamOpenDrive>>,
+  globalVariables?: Readonly<Record<string, VariableValue>>,
+  context?: MessageConverterContext,
 ) => {
   deletions: { timestamp: Time; type: SceneEntityDeletionType; id: string }[];
   entities: PartialSceneEntity[];
@@ -126,7 +135,8 @@ export function registerOpenDriveMapConverter(): (
   let wasmModule: LibOpenDRIVEModule | undefined;
   let wasmLoading = false;
 
-  return (msg, event) => {
+  return (msg, event, _globalVariables, context) => {
+    const emitAlert = context?.emitAlert;
     const config =
       (event.topicConfig as OpenDriveConverterSettings | undefined) ??
       DEFAULT_SETTINGS;
@@ -170,6 +180,13 @@ export function registerOpenDriveMapConverter(): (
           })
           .catch((err: unknown) => {
             console.error("[OpenDRIVE Converter] WASM load failed:", err);
+            const alert: MessageConverterAlert = {
+              severity: "error",
+              message: "OpenDRIVE WASM module failed to load",
+              error: err instanceof Error ? err : new Error(String(err)),
+              tip: "The WebAssembly binary could not be loaded. Try reloading the application.",
+            };
+            emitAlert?.(alert, "opendrive-wasm-load-error");
           })
           .finally(() => {
             wasmLoading = false;
@@ -193,6 +210,13 @@ export function registerOpenDriveMapConverter(): (
       return { deletions, entities };
     } catch (error) {
       console.error("[OpenDRIVE Converter] Failed to process map:", error);
+      const alert: MessageConverterAlert = {
+        severity: "error",
+        message: "OpenDRIVE map conversion failed",
+        error: error instanceof Error ? error : new Error(String(error)),
+        tip: "Check if the map XML is valid OpenDRIVE. The WASM module may need rebuilding.",
+      };
+      emitAlert?.(alert, "opendrive-conversion-error");
       return { deletions, entities: [] };
     }
   };
@@ -201,6 +225,15 @@ export function registerOpenDriveMapConverter(): (
 // ═══════════════════════════════════════════════════════════════════════════════
 // ENTITY GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/** Safely call an optional WASM function; returns undefined if it doesn't exist. */
+function tryCall<T extends { delete(): void }>(fn: () => T): T | undefined {
+  try {
+    return fn();
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Generate all scene entities using libOpenDRIVE WASM.
@@ -250,32 +283,26 @@ function generateMapEntities(
       mesh.roadmarks_mesh,
     );
 
-    // [ODR §13] Get road object metadata per chunk
-    const roadObjectMetadataMap = wasm.getRoadObjectMetadataMap(
-      odrMap,
-      mesh.road_objects_mesh,
+    // Optional metadata maps — gracefully degrade if WASM binary is stale
+    // (new Embind functions not yet compiled into the .wasm artifact)
+    const roadObjectMetadataMap = tryCall(() =>
+      wasm.getRoadObjectMetadataMap(odrMap, mesh.road_objects_mesh),
     );
-
-    // [ODR §14] Get road signal metadata per chunk
-    const roadSignalMetadataMap = wasm.getRoadSignalMetadataMap(
-      odrMap,
-      mesh.road_signals_mesh,
+    const roadSignalMetadataMap = tryCall(() =>
+      wasm.getRoadSignalMetadataMap(odrMap, mesh.road_signals_mesh),
     );
-
-    // [ODR §11.8] Get roadmark group metadata per chunk
-    const roadmarkMetadataMap = wasm.getRoadmarkMetadataMap(
-      odrMap,
-      mesh.roadmarks_mesh,
+    const roadmarkMetadataMap = tryCall(() =>
+      wasm.getRoadmarkMetadataMap(odrMap, mesh.roadmarks_mesh),
     );
-
-    // [ODR §10] Get road-level metadata (name, speed, type)
-    const roadMetadataMap = wasm.getRoadMetadataMap(odrMap, mesh.lanes_mesh);
-
-    // [ODR §10.2] Get road predecessor/successor linkage
-    const roadLinkageMap = wasm.getRoadLinkageMap(odrMap, mesh.lanes_mesh);
-
-    // [ODR §11.5] Get lane predecessor/successor linkage
-    const laneLinkageMap = wasm.getLaneLinkageMap(odrMap, mesh.lanes_mesh);
+    const roadMetadataMap = tryCall(() =>
+      wasm.getRoadMetadataMap(odrMap, mesh.lanes_mesh),
+    );
+    const roadLinkageMap = tryCall(() =>
+      wasm.getRoadLinkageMap(odrMap, mesh.lanes_mesh),
+    );
+    const laneLinkageMap = tryCall(() =>
+      wasm.getLaneLinkageMap(odrMap, mesh.lanes_mesh),
+    );
 
     // [ODR §12] Identify junction connecting roads for distinct coloring
     const junctionRoadIdsVec = wasm.getJunctionRoadIds(odrMap);
@@ -359,12 +386,12 @@ function generateMapEntities(
 
     laneTypeMap.delete();
     roadmarkColorMap.delete();
-    roadObjectMetadataMap.delete();
-    roadSignalMetadataMap.delete();
-    roadmarkMetadataMap.delete();
-    roadMetadataMap.delete();
-    roadLinkageMap.delete();
-    laneLinkageMap.delete();
+    roadObjectMetadataMap?.delete();
+    roadSignalMetadataMap?.delete();
+    roadmarkMetadataMap?.delete();
+    roadMetadataMap?.delete();
+    roadLinkageMap?.delete();
+    laneLinkageMap?.delete();
     mesh.delete();
     return entities;
   } finally {
@@ -414,9 +441,9 @@ function buildLaneSurfaceEntities(
   lanesMesh: LanesMesh,
   laneTypeMap: EmscriptenMap<number, string>,
   junctionRoadIds: Set<string>,
-  roadMetadataMap: EmscriptenMap<number, string>,
-  roadLinkageMap: EmscriptenMap<number, string>,
-  laneLinkageMap: EmscriptenMap<number, string>,
+  roadMetadataMap: EmscriptenMap<number, string> | undefined,
+  roadLinkageMap: EmscriptenMap<number, string> | undefined,
+  laneLinkageMap: EmscriptenMap<number, string> | undefined,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const entities: PartialSceneEntity[] = [];
@@ -503,7 +530,7 @@ function buildLaneSurfaceEntities(
     ];
 
     // Enrich with road-level metadata (name, speed, type)
-    const roadMeta = roadMetadataMap.get(startIdx);
+    const roadMeta = roadMetadataMap?.get(startIdx);
     if (roadMeta) {
       const [roadName, roadLength, , speedMax, speedUnit, roadType] =
         roadMeta.split("\t");
@@ -525,7 +552,7 @@ function buildLaneSurfaceEntities(
     }
 
     // Enrich with road linkage (predecessor/successor)
-    const roadLink = roadLinkageMap.get(startIdx);
+    const roadLink = roadLinkageMap?.get(startIdx);
     if (roadLink) {
       const parts = roadLink.split("\t");
       const predId = parts[0];
@@ -549,7 +576,7 @@ function buildLaneSurfaceEntities(
     }
 
     // Enrich with lane linkage (predecessor/successor lane IDs)
-    const laneLink = laneLinkageMap.get(startIdx);
+    const laneLink = laneLinkageMap?.get(startIdx);
     if (laneLink) {
       const [predLane, succLane] = laneLink.split("\t");
       if (predLane) {
@@ -688,7 +715,7 @@ function buildLaneBoundaryEntities(
 function buildRoadMarkEntities(
   roadmarksMesh: RoadmarksMesh,
   roadmarkColorMap: EmscriptenMap<number, string>,
-  roadmarkMetadataMap: EmscriptenMap<number, string>,
+  roadmarkMetadataMap: EmscriptenMap<number, string> | undefined,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = roadmarksMesh.vertices;
@@ -765,7 +792,7 @@ function buildRoadMarkEntities(
     ];
 
     // Enrich with roadmark group metadata (weight, lane_change)
-    const rmMeta = roadmarkMetadataMap.get(startIdx);
+    const rmMeta = roadmarkMetadataMap?.get(startIdx);
     if (rmMeta) {
       const [, weight, laneChange, width] = rmMeta.split("\t");
       if (weight) {
@@ -801,7 +828,7 @@ function buildRoadMarkEntities(
  */
 function buildRoadObjectEntities(
   objectsMesh: RoadObjectsMesh,
-  objectMetadataMap: EmscriptenMap<number, string>,
+  objectMetadataMap: EmscriptenMap<number, string> | undefined,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = objectsMesh.vertices;
@@ -871,7 +898,7 @@ function buildRoadObjectEntities(
     ];
 
     // Enrich with object metadata from the parsed OpenDRIVE
-    const objMeta = objectMetadataMap.get(startIdx);
+    const objMeta = objectMetadataMap?.get(startIdx);
     if (objMeta) {
       const [
         type,
@@ -940,7 +967,7 @@ function buildRoadObjectEntities(
  */
 function buildRoadSignalEntities(
   signalsMesh: RoadSignalsMesh,
-  signalMetadataMap: EmscriptenMap<number, string>,
+  signalMetadataMap: EmscriptenMap<number, string> | undefined,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const vertices = signalsMesh.vertices;
@@ -1010,7 +1037,7 @@ function buildRoadSignalEntities(
     ];
 
     // Enrich with signal metadata from the parsed OpenDRIVE
-    const sigMeta = signalMetadataMap.get(startIdx);
+    const sigMeta = signalMetadataMap?.get(startIdx);
     if (sigMeta) {
       const [
         name,
