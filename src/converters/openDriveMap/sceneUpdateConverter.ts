@@ -271,6 +271,12 @@ function generateMapEntities(
     // [ODR §10] Get road-level metadata (name, speed, type)
     const roadMetadataMap = wasm.getRoadMetadataMap(odrMap, mesh.lanes_mesh);
 
+    // [ODR §10.2] Get road predecessor/successor linkage
+    const roadLinkageMap = wasm.getRoadLinkageMap(odrMap, mesh.lanes_mesh);
+
+    // [ODR §11.5] Get lane predecessor/successor linkage
+    const laneLinkageMap = wasm.getLaneLinkageMap(odrMap, mesh.lanes_mesh);
+
     // [ODR §12] Identify junction connecting roads for distinct coloring
     const junctionRoadIdsVec = wasm.getJunctionRoadIds(odrMap);
     const junctionRoadIds = vectorToSet(junctionRoadIdsVec);
@@ -285,6 +291,8 @@ function generateMapEntities(
           laneTypeMap,
           junctionRoadIds,
           roadMetadataMap,
+          roadLinkageMap,
+          laneLinkageMap,
           timestamp,
         ),
       );
@@ -355,6 +363,8 @@ function generateMapEntities(
     roadSignalMetadataMap.delete();
     roadmarkMetadataMap.delete();
     roadMetadataMap.delete();
+    roadLinkageMap.delete();
+    laneLinkageMap.delete();
     mesh.delete();
     return entities;
   } finally {
@@ -405,6 +415,8 @@ function buildLaneSurfaceEntities(
   laneTypeMap: EmscriptenMap<number, string>,
   junctionRoadIds: Set<string>,
   roadMetadataMap: EmscriptenMap<number, string>,
+  roadLinkageMap: EmscriptenMap<number, string>,
+  laneLinkageMap: EmscriptenMap<number, string>,
   timestamp: Time,
 ): PartialSceneEntity[] {
   const entities: PartialSceneEntity[] = [];
@@ -509,6 +521,42 @@ function buildLaneSurfaceEntities(
       }
       if (roadType) {
         entity.metadata.push({ key: "road_type", value: roadType });
+      }
+    }
+
+    // Enrich with road linkage (predecessor/successor)
+    const roadLink = roadLinkageMap.get(startIdx);
+    if (roadLink) {
+      const parts = roadLink.split("\t");
+      const predId = parts[0];
+      const predType = parts[1] ?? "";
+      const predContact = parts[2] ?? "";
+      const succId = parts[3];
+      const succType = parts[4] ?? "";
+      const succContact = parts[5] ?? "";
+      if (predId) {
+        entity.metadata.push({
+          key: "predecessor",
+          value: `${predId} (${predType}, ${predContact})`,
+        });
+      }
+      if (succId) {
+        entity.metadata.push({
+          key: "successor",
+          value: `${succId} (${succType}, ${succContact})`,
+        });
+      }
+    }
+
+    // Enrich with lane linkage (predecessor/successor lane IDs)
+    const laneLink = laneLinkageMap.get(startIdx);
+    if (laneLink) {
+      const [predLane, succLane] = laneLink.split("\t");
+      if (predLane) {
+        entity.metadata.push({ key: "lane_predecessor", value: predLane });
+      }
+      if (succLane) {
+        entity.metadata.push({ key: "lane_successor", value: succLane });
       }
     }
     entities.push(entity);

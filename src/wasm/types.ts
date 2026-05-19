@@ -216,6 +216,18 @@ export interface LibOpenDRIVEModule {
     odrMap: OpenDriveMap,
     roadmarksMesh: RoadmarksMesh,
   ): EmscriptenMap<number, string>;
+
+  /** Get road predecessor/successor linkage per road chunk: vertex_start_idx → "pred_id\tpred_type\tpred_contact\tsucc_id\tsucc_type\tsucc_contact" */
+  getRoadLinkageMap(
+    odrMap: OpenDriveMap,
+    lanesMesh: LanesMesh,
+  ): EmscriptenMap<number, string>;
+
+  /** Get lane predecessor/successor IDs per lane chunk: vertex_start_idx → "pred_lane_id\tsucc_lane_id" */
+  getLaneLinkageMap(
+    odrMap: OpenDriveMap,
+    lanesMesh: LanesMesh,
+  ): EmscriptenMap<number, string>;
 }
 
 /** Emscripten module factory function */
