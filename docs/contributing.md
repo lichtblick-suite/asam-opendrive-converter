@@ -47,7 +47,7 @@ npm test -- --watch         # Watch mode
 npm test -- --coverage      # With coverage report
 ```
 
-Test files go in `tests/**/*.spec.ts`. The test infrastructure is configured (Jest + ts-jest + jsdom) but the test suite has not been written yet.
+Test files go in `tests/**/*.spec.ts`. The test infrastructure uses Jest + ts-jest + jsdom with path alias support matching `tsconfig.json`.
 
 ## Code Style
 
@@ -59,9 +59,8 @@ Test files go in `tests/**/*.spec.ts`. The test infrastructure is configured (Je
 ## Commit Conventions
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
-- All commits must be GPG-signed (`-S`) and signed-off (`-s`)
-- No AI co-authorship attribution
-- Pre-commit hooks enforce: tests, lint-staged, npm audit, build
+- Pre-commit hooks enforce: tests, lint-staged, npm audit, build, docs build
+- Commit messages are validated by the `commit-msg` hook
 
 ## Architecture
 
@@ -71,6 +70,7 @@ See the [Architecture Overview](/architecture/overview) for the full module stru
 
 All reference documentation is in `docs/references/`:
 - `ASAM_OpenDRIVE_Standard.md` — V1.8.1 technical reference
-- `INTERFACE_MAPPING.md` — Deep mapping analysis
-- `FEATURE_MAPPING_TABLE.md` — Complete feature gap analysis
+- `ASAM_OSI_Coordinate_System.md` — OSI coordinate system & proto definitions
+- `Foxglove_SceneUpdate_Schema.md` — Foxglove visualization schema reference
+- `FEATURE_MAPPING_TABLE.md` — Complete feature mapping: Standard → libOpenDRIVE → TS → Foxglove
 - `opendrive/` — Full spec chapters as markdown

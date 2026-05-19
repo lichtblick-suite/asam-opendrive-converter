@@ -188,6 +188,7 @@ asam-opendrive-converter/
 │   │   ├── index.ts            # Re-exports
 │   │   └── openDriveMap/
 │   │       ├── context.ts      # Settings interface, caching context
+│   │       ├── meshUtils.ts    # Vertex extraction, index partitioning, remapping
 │   │       ├── panelSettings.ts # Panel UI toggles + handler
 │   │       └── sceneUpdateConverter.ts # Main: XML → WASM → SceneUpdate
 │   ├── utils/

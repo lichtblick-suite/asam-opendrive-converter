@@ -79,6 +79,13 @@ import type {
 import type { OpenDriveConverterSettings } from "./context";
 import { createOpenDriveConverterContext, DEFAULT_SETTINGS } from "./context";
 import {
+  extractChunkKeys,
+  extractVertices,
+  partitionIndicesByChunk,
+  remapVertex,
+  vectorToSet,
+} from "./meshUtils";
+import {
   BOUNDARY_Z_OFFSET,
   DEFAULT_LANE_COLOR,
   GLOBAL_FRAME_ID,
@@ -98,7 +105,6 @@ import { IDENTITY_POSE, makeSceneEntity } from "../../utils/scene";
 import { getLibOpenDRIVE } from "../../wasm";
 import type {
   EmscriptenMap,
-  EmscriptenVector,
   LanesMesh,
   LibOpenDRIVEModule,
   OpenDriveMap,
@@ -106,7 +112,6 @@ import type {
   RoadNetworkMesh,
   RoadObjectsMesh,
   RoadSignalsMesh,
-  Vec3D,
 } from "../../wasm/types";
 
 /** Default chord error tolerance in meters [libODR eps parameter] */
@@ -226,12 +231,17 @@ export function registerOpenDriveMapConverter(): (
 // ENTITY GENERATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Safely call an optional WASM function; returns undefined if it doesn't exist. */
+/** Safely call an optional WASM function; returns undefined if it doesn't exist.
+ *  Only catches TypeError (indicates the Embind function is missing from the WASM binary).
+ *  Other errors propagate so real bugs are not silently swallowed. */
 function tryCall<T extends { delete(): void }>(fn: () => T): T | undefined {
   try {
     return fn();
-  } catch {
-    return undefined;
+  } catch (err: unknown) {
+    if (err instanceof TypeError) {
+      return undefined;
+    }
+    throw err;
   }
 }
 
@@ -459,13 +469,21 @@ function buildLaneSurfaceEntities(
   // Pre-extract all vertices to avoid repeated WASM calls
   const allPoints = extractVertices(vertices);
 
-  // Iterate per-lane chunks using lane_start_indices
+  // Partition triangles by lane chunk in O(N+M) time
   const laneKeys = lanesMesh.lane_start_indices.keys();
-  const numLanes = laneKeys.size();
+  const chunkStarts = extractChunkKeys(laneKeys);
+  laneKeys.delete();
+  const trianglesByChunk = partitionIndicesByChunk(
+    indices,
+    chunkStarts,
+    numVerts,
+  );
 
-  for (let li = 0; li < numLanes; li++) {
-    const startIdx = laneKeys.get(li);
-    const endIdx = li + 1 < numLanes ? laneKeys.get(li + 1) : numVerts;
+  for (const startIdx of chunkStarts) {
+    const triangles = trianglesByChunk.get(startIdx);
+    if (!triangles || triangles.length === 0) {
+      continue;
+    }
 
     // Get lane metadata
     const roadId = lanesMesh.get_road_id(startIdx);
@@ -473,30 +491,19 @@ function buildLaneSurfaceEntities(
     const s0 = lanesMesh.get_lanesec_s0(startIdx);
     const laneType = laneTypeMap.get(startIdx) ?? "driving";
 
-    // Collect triangle indices for this lane's vertex range
+    // Remap vertices for this chunk
     const lanePoints: Point3[] = [];
     const laneIndices: number[] = [];
     const vertexRemap = new Map<number, number>();
 
-    for (let i = 0; i < numIndices; i += 3) {
-      const i0 = indices.get(i);
-      const i1 = indices.get(i + 1);
-      const i2 = indices.get(i + 2);
-
-      if (
-        i0 >= startIdx &&
-        i0 < endIdx &&
-        i1 >= startIdx &&
-        i1 < endIdx &&
-        i2 >= startIdx &&
-        i2 < endIdx
-      ) {
-        laneIndices.push(
-          remapVertex(i0, vertexRemap, allPoints, lanePoints),
-          remapVertex(i1, vertexRemap, allPoints, lanePoints),
-          remapVertex(i2, vertexRemap, allPoints, lanePoints),
-        );
+    for (const tri of triangles) {
+      const r0 = remapVertex(tri.i0, vertexRemap, allPoints, lanePoints);
+      const r1 = remapVertex(tri.i1, vertexRemap, allPoints, lanePoints);
+      const r2 = remapVertex(tri.i2, vertexRemap, allPoints, lanePoints);
+      if (r0 == undefined || r1 == undefined || r2 == undefined) {
+        continue; // skip triangles with out-of-bounds vertices
       }
+      laneIndices.push(r0, r1, r2);
     }
 
     if (laneIndices.length === 0) {
@@ -638,14 +645,15 @@ function buildLaneBoundaryEntities(
   }
   outlineIndices.delete();
 
-  // Split outline pairs per lane chunk, same as buildLaneSurfaceEntities
+  // Split outline pairs per lane chunk
   const laneKeys = lanesMesh.lane_start_indices.keys();
-  const numLanes = laneKeys.size();
+  const chunkStarts = extractChunkKeys(laneKeys);
+  laneKeys.delete();
   const entities: PartialSceneEntity[] = [];
 
-  for (let li = 0; li < numLanes; li++) {
-    const startIdx = laneKeys.get(li);
-    const endIdx = li + 1 < numLanes ? laneKeys.get(li + 1) : numVerts;
+  for (let li = 0; li < chunkStarts.length; li++) {
+    const startIdx = chunkStarts[li]!;
+    const endIdx = chunkStarts[li + 1] ?? numVerts;
 
     const lanePoints: Point3[] = [];
     const lineIndices: number[] = [];
@@ -653,10 +661,11 @@ function buildLaneBoundaryEntities(
 
     for (const [a, b] of outlinePairs) {
       if (a >= startIdx && a < endIdx && b >= startIdx && b < endIdx) {
-        lineIndices.push(
-          remapVertex(a, vertexRemap, allPoints, lanePoints),
-          remapVertex(b, vertexRemap, allPoints, lanePoints),
-        );
+        const ra = remapVertex(a, vertexRemap, allPoints, lanePoints);
+        const rb = remapVertex(b, vertexRemap, allPoints, lanePoints);
+        if (ra != undefined && rb != undefined) {
+          lineIndices.push(ra, rb);
+        }
       }
     }
 
@@ -689,7 +698,6 @@ function buildLaneBoundaryEntities(
     entities.push(entity);
   }
 
-  laneKeys.delete();
   return entities;
 }
 
@@ -721,22 +729,30 @@ function buildRoadMarkEntities(
   const vertices = roadmarksMesh.vertices;
   const indices = roadmarksMesh.indices;
   const numVerts = vertices.size();
-  const numIndices = indices.size();
 
-  if (numVerts === 0 || numIndices === 0) {
+  if (numVerts === 0 || indices.size() === 0) {
     return [];
   }
 
   const allPoints = extractVertices(vertices, MARKING_Z_OFFSET);
 
-  // Iterate per-roadmark chunks
+  // Partition triangles by roadmark chunk in O(N+M) time
   const typeKeys = roadmarksMesh.roadmark_type_start_indices.keys();
-  const numChunks = typeKeys.size();
+  const chunkStarts = extractChunkKeys(typeKeys);
+  typeKeys.delete();
+  const trianglesByChunk = partitionIndicesByChunk(
+    indices,
+    chunkStarts,
+    numVerts,
+  );
   const entities: PartialSceneEntity[] = [];
 
-  for (let ci = 0; ci < numChunks; ci++) {
-    const startIdx = typeKeys.get(ci);
-    const endIdx = ci + 1 < numChunks ? typeKeys.get(ci + 1) : numVerts;
+  for (const startIdx of chunkStarts) {
+    const triangles = trianglesByChunk.get(startIdx);
+    if (!triangles || triangles.length === 0) {
+      continue;
+    }
+
     const markType =
       roadmarksMesh.roadmark_type_start_indices.get(startIdx) ?? "solid";
     const roadId = roadmarksMesh.get_road_id(startIdx);
@@ -745,25 +761,14 @@ function buildRoadMarkEntities(
     const chunkIndices: number[] = [];
     const vertexRemap = new Map<number, number>();
 
-    for (let i = 0; i < numIndices; i += 3) {
-      const i0 = indices.get(i);
-      const i1 = indices.get(i + 1);
-      const i2 = indices.get(i + 2);
-
-      if (
-        i0 >= startIdx &&
-        i0 < endIdx &&
-        i1 >= startIdx &&
-        i1 < endIdx &&
-        i2 >= startIdx &&
-        i2 < endIdx
-      ) {
-        chunkIndices.push(
-          remapVertex(i0, vertexRemap, allPoints, chunkPoints),
-          remapVertex(i1, vertexRemap, allPoints, chunkPoints),
-          remapVertex(i2, vertexRemap, allPoints, chunkPoints),
-        );
+    for (const tri of triangles) {
+      const r0 = remapVertex(tri.i0, vertexRemap, allPoints, chunkPoints);
+      const r1 = remapVertex(tri.i1, vertexRemap, allPoints, chunkPoints);
+      const r2 = remapVertex(tri.i2, vertexRemap, allPoints, chunkPoints);
+      if (r0 == undefined || r1 == undefined || r2 == undefined) {
+        continue;
       }
+      chunkIndices.push(r0, r1, r2);
     }
 
     if (chunkIndices.length === 0) {
@@ -774,7 +779,8 @@ function buildRoadMarkEntities(
     const markColorName = roadmarkColorMap.get(startIdx) ?? "standard";
     const color =
       ROAD_MARK_COLORS[markColorName] ?? ROAD_MARK_COLORS["standard"]!;
-    const entityId = `road.${roadId}.roadmark.${ci.toString()}`;
+    // Stable entity ID using vertex start index (deterministic for same input)
+    const entityId = `road.${roadId}.roadmark.${startIdx.toString()}`;
 
     const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
     entity.triangles = [
@@ -808,7 +814,6 @@ function buildRoadMarkEntities(
     entities.push(entity);
   }
 
-  typeKeys.delete();
   return entities;
 }
 
@@ -834,21 +839,30 @@ function buildRoadObjectEntities(
   const vertices = objectsMesh.vertices;
   const indices = objectsMesh.indices;
   const numVerts = vertices.size();
-  const numIndices = indices.size();
 
-  if (numVerts === 0 || numIndices === 0) {
+  if (numVerts === 0 || indices.size() === 0) {
     return [];
   }
 
   const allPoints = extractVertices(vertices);
 
+  // Partition triangles by object chunk in O(N+M) time
   const objKeys = objectsMesh.road_object_start_indices.keys();
-  const numObjects = objKeys.size();
+  const chunkStarts = extractChunkKeys(objKeys);
+  objKeys.delete();
+  const trianglesByChunk = partitionIndicesByChunk(
+    indices,
+    chunkStarts,
+    numVerts,
+  );
   const entities: PartialSceneEntity[] = [];
 
-  for (let oi = 0; oi < numObjects; oi++) {
-    const startIdx = objKeys.get(oi);
-    const endIdx = oi + 1 < numObjects ? objKeys.get(oi + 1) : numVerts;
+  for (const startIdx of chunkStarts) {
+    const triangles = trianglesByChunk.get(startIdx);
+    if (!triangles || triangles.length === 0) {
+      continue;
+    }
+
     const objectId = objectsMesh.road_object_start_indices.get(startIdx) ?? "";
     const roadId = objectsMesh.get_road_id(startIdx);
 
@@ -856,25 +870,14 @@ function buildRoadObjectEntities(
     const objIndices: number[] = [];
     const vertexRemap = new Map<number, number>();
 
-    for (let i = 0; i < numIndices; i += 3) {
-      const i0 = indices.get(i);
-      const i1 = indices.get(i + 1);
-      const i2 = indices.get(i + 2);
-
-      if (
-        i0 >= startIdx &&
-        i0 < endIdx &&
-        i1 >= startIdx &&
-        i1 < endIdx &&
-        i2 >= startIdx &&
-        i2 < endIdx
-      ) {
-        objIndices.push(
-          remapVertex(i0, vertexRemap, allPoints, objPoints),
-          remapVertex(i1, vertexRemap, allPoints, objPoints),
-          remapVertex(i2, vertexRemap, allPoints, objPoints),
-        );
+    for (const tri of triangles) {
+      const r0 = remapVertex(tri.i0, vertexRemap, allPoints, objPoints);
+      const r1 = remapVertex(tri.i1, vertexRemap, allPoints, objPoints);
+      const r2 = remapVertex(tri.i2, vertexRemap, allPoints, objPoints);
+      if (r0 == undefined || r1 == undefined || r2 == undefined) {
+        continue;
       }
+      objIndices.push(r0, r1, r2);
     }
 
     if (objIndices.length === 0) {
@@ -946,7 +949,6 @@ function buildRoadObjectEntities(
     entities.push(entity);
   }
 
-  objKeys.delete();
   return entities;
 }
 
@@ -973,21 +975,30 @@ function buildRoadSignalEntities(
   const vertices = signalsMesh.vertices;
   const indices = signalsMesh.indices;
   const numVerts = vertices.size();
-  const numIndices = indices.size();
 
-  if (numVerts === 0 || numIndices === 0) {
+  if (numVerts === 0 || indices.size() === 0) {
     return [];
   }
 
   const allPoints = extractVertices(vertices);
 
+  // Partition triangles by signal chunk in O(N+M) time
   const sigKeys = signalsMesh.road_signal_start_indices.keys();
-  const numSignals = sigKeys.size();
+  const chunkStarts = extractChunkKeys(sigKeys);
+  sigKeys.delete();
+  const trianglesByChunk = partitionIndicesByChunk(
+    indices,
+    chunkStarts,
+    numVerts,
+  );
   const entities: PartialSceneEntity[] = [];
 
-  for (let si = 0; si < numSignals; si++) {
-    const startIdx = sigKeys.get(si);
-    const endIdx = si + 1 < numSignals ? sigKeys.get(si + 1) : numVerts;
+  for (const startIdx of chunkStarts) {
+    const triangles = trianglesByChunk.get(startIdx);
+    if (!triangles || triangles.length === 0) {
+      continue;
+    }
+
     const signalId = signalsMesh.road_signal_start_indices.get(startIdx) ?? "";
     const roadId = signalsMesh.get_road_id(startIdx);
 
@@ -995,25 +1006,14 @@ function buildRoadSignalEntities(
     const sigIndices: number[] = [];
     const vertexRemap = new Map<number, number>();
 
-    for (let i = 0; i < numIndices; i += 3) {
-      const i0 = indices.get(i);
-      const i1 = indices.get(i + 1);
-      const i2 = indices.get(i + 2);
-
-      if (
-        i0 >= startIdx &&
-        i0 < endIdx &&
-        i1 >= startIdx &&
-        i1 < endIdx &&
-        i2 >= startIdx &&
-        i2 < endIdx
-      ) {
-        sigIndices.push(
-          remapVertex(i0, vertexRemap, allPoints, sigPoints),
-          remapVertex(i1, vertexRemap, allPoints, sigPoints),
-          remapVertex(i2, vertexRemap, allPoints, sigPoints),
-        );
+    for (const tri of triangles) {
+      const r0 = remapVertex(tri.i0, vertexRemap, allPoints, sigPoints);
+      const r1 = remapVertex(tri.i1, vertexRemap, allPoints, sigPoints);
+      const r2 = remapVertex(tri.i2, vertexRemap, allPoints, sigPoints);
+      if (r0 == undefined || r1 == undefined || r2 == undefined) {
+        continue;
       }
+      sigIndices.push(r0, r1, r2);
     }
 
     if (sigIndices.length === 0) {
@@ -1085,50 +1085,5 @@ function buildRoadSignalEntities(
     entities.push(entity);
   }
 
-  sigKeys.delete();
   return entities;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// UTILITY FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** Extract all Vec3D vertices from an Emscripten vector into a JS Point3 array */
-function extractVertices(
-  vertices: EmscriptenVector<Vec3D>,
-  zOffset = 0,
-): Point3[] {
-  const count = vertices.size();
-  const result: Point3[] = new Array<Point3>(count);
-  for (let i = 0; i < count; i++) {
-    const v = vertices.get(i);
-    result[i] = { x: v[0], y: v[1], z: v[2] + zOffset };
-  }
-  return result;
-}
-
-/** Remap a global vertex index to a local index, adding to localPoints if new */
-function remapVertex(
-  globalIdx: number,
-  remap: Map<number, number>,
-  allPoints: Point3[],
-  localPoints: Point3[],
-): number {
-  let localIdx = remap.get(globalIdx);
-  if (localIdx == undefined) {
-    localIdx = localPoints.length;
-    localPoints.push(allPoints[globalIdx]!);
-    remap.set(globalIdx, localIdx);
-  }
-  return localIdx;
-}
-
-/** Convert an Emscripten vector<string> to a JS Set<string> */
-function vectorToSet(vec: EmscriptenVector<string>): Set<string> {
-  const set = new Set<string>();
-  const n = vec.size();
-  for (let i = 0; i < n; i++) {
-    set.add(vec.get(i));
-  }
-  return set;
 }
