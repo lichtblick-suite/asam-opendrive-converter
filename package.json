@@ -16,8 +16,10 @@
     "road-network"
   ],
   "scripts": {
-    "build": "lichtblick-extension build",
-    "lichtblick:prepublish": "lichtblick-extension build --mode production",
+    "build:wasm": "scripts/build-wasm.sh",
+    "build:wasm:check": "node scripts/check-wasm.js",
+    "build": "npm run build:wasm:check && lichtblick-extension build",
+    "lichtblick:prepublish": "npm run build:wasm:check && lichtblick-extension build --mode production",
     "lint:ci": "eslint --report-unused-disable-directives .",
     "lint": "eslint --report-unused-disable-directives --fix .",
     "local-install": "lichtblick-extension install",

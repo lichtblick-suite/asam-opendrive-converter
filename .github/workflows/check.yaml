@@ -7,8 +7,50 @@ on:
     branches: "*"
 
 jobs:
+  # Phase 1: Build libOpenDRIVE WASM (cached by submodule commit)
+  build-wasm:
+    name: build-wasm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Get submodule commit hash (cache key)
+        id: submodule-hash
+        run: echo "hash=$(git -C submodule/libOpenDRIVE rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache WASM artifacts
+        id: cache-wasm
+        uses: actions/cache@v4
+        with:
+          path: src/wasm/libOpenDRIVE.*
+          key: wasm-${{ runner.os }}-${{ steps.submodule-hash.outputs.hash }}-${{ hashFiles('CMakeLists.txt', 'submodule/libOpenDRIVE/src/Embind.cpp') }}
+
+      - name: Setup Emscripten
+        if: steps.cache-wasm.outputs.cache-hit != 'true'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Build WASM module
+        if: steps.cache-wasm.outputs.cache-hit != 'true'
+        run: npm run build:wasm
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-artifacts
+          path: |
+            src/wasm/libOpenDRIVE.js
+            src/wasm/libOpenDRIVE.wasm
+          retention-days: 7
+
+  # Phase 2: TypeScript lint, test, build (depends on WASM)
   check:
     name: check
+    needs: build-wasm
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,17 +60,26 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-artifacts
+          path: src/wasm/
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
 
       - name: Validate package.json
-        run: |
-          node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Verify WASM artifacts
+        run: npm run build:wasm:check
 
       - name: Audit Dependencies
         run: npm audit

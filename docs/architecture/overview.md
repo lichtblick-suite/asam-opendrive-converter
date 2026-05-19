@@ -4,28 +4,13 @@ sidebar_position: 1
 
 # Architecture Overview
 
-## Current vs Future Architecture
+## Target Architecture: libOpenDRIVE WASM
 
-This extension currently uses a **pure TypeScript geometry engine** that reimplements OpenDRIVE geometry evaluation. The [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE/) C++ library is the reference implementation we validated against — a future version may integrate it as a **WASM module** to gain full feature coverage without reimplementing complex algorithms.
+This extension uses [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE/) compiled to **WebAssembly** as its geometry and tessellation kernel. The C++ library handles all OpenDRIVE geometry evaluation, lane computation, and mesh generation — the TypeScript layer only adapts its output to Foxglove schema.
 
-### Current Architecture (Pure TypeScript)
+> **Current state:** An interim TypeScript geometry engine is in place while the WASM integration is being completed. It has known visual issues (segment discontinuities) that the C++ library solves correctly.
 
-```mermaid
-graph TD
-    MCAP[MCAP File<br/>OMEGA PRIME recording] -->|protobuf channel| DESER[Proto Deserializer<br/><code>src/utils/proto.ts</code>]
-    DESER -->|OpenDRIVE XML string| PARSER[XML Parser<br/><code>fast-xml-parser</code>]
-    PARSER -->|Typed OpenDriveMap| GEOM[TypeScript Geometry Engine<br/><code>src/geometry/*.ts</code>]
-    GEOM -->|3D points & meshes| FEAT[Feature Builders<br/><code>src/features/*.ts</code>]
-    FEAT -->|SceneEntity array| SCENE[SceneUpdate<br/>Foxglove schema]
-    SCENE -->|render| PANEL[Lichtblick 3D Panel]
-
-    style GEOM fill:#ffe0b2,stroke:#e65100
-    style PANEL fill:#c8e6c9,stroke:#2e7d32
-```
-
-**Limitation:** Our TypeScript engine only covers ~41% of OpenDRIVE features (no superelevation, no objects/signals, no adaptive sampling, no dashed markings).
-
-### Future Architecture (with libOpenDRIVE WASM)
+### Architecture (with libOpenDRIVE WASM)
 
 ```mermaid
 graph TD
@@ -46,50 +31,25 @@ graph TD
     style PANEL fill:#c8e6c9,stroke:#2e7d32
 ```
 
-**Benefit:** libOpenDRIVE handles ALL geometry computation in optimized C++ — we only need a thin TypeScript adapter to map its output meshes to Foxglove schema.
+### Why libOpenDRIVE (not custom TypeScript)
 
-## Why libOpenDRIVE WASM Would Be Useful
+The C++ library is the authoritative choice because:
 
-```mermaid
-graph LR
-    subgraph "Current: TypeScript Engine (41% coverage)"
-        A1[Line ✅]
-        A2[Arc ✅]
-        A3[Spiral ✅]
-        A4[Poly3 ✅]
-        A5[ParamPoly3 ✅]
-        A6[Elevation ✅]
-        A7[Lane Width ✅]
-        A8[Superelevation ❌]
-        A9[Lane Offset ❌]
-        A10[Road Objects ❌]
-        A11[Signals ❌]
-        A12[Dashed Marks ❌]
-    end
+1. **Correct by construction** — implements the full OpenDRIVE standard including geometry continuity guarantees [ODR §9.2], lane offset [ODR §11.4], superelevation, adaptive sampling
+2. **Community-maintained** — actively developed, tested against real-world OpenDRIVE files
+3. **Performance** — compiled C++ is 5-10× faster than equivalent JS numeric integration
+4. **Feature-complete** — road objects, signals, dashed markings, cubic Bezier, all geometry types
 
-    subgraph "libOpenDRIVE WASM (100% coverage)"
-        B1[All geometry types ✅]
-        B2[Adaptive sampling ✅]
-        B3[Superelevation/crossfall ✅]
-        B4[Lane offset ✅]
-        B5[Road objects → Mesh3D ✅]
-        B6[Signals → Mesh3D ✅]
-        B7[Dashed road marks ✅]
-        B8[Surface normals ✅]
-        B9[Cubic Bezier ✅]
-    end
-```
+| Aspect | libOpenDRIVE WASM | Interim TypeScript |
+|--------|-------------------|-------------------|
+| **Feature coverage** | ~95% of OpenDRIVE | 41% |
+| **Geometry continuity** | Guaranteed (uses spec start positions) | Discontinuities at junctions |
+| **Sampling** | Adaptive error-bounded | Fixed 1m steps |
+| **Lane offset** | Full cubic profile support | Not applied |
+| **Road marks** | Dashed patterns with length/space | Continuous lines only |
+| **Objects/Signals** | Full 3D mesh generation | Not implemented |
 
-| Aspect | Current (TypeScript) | Future (WASM) |
-|--------|---------------------|---------------|
-| **Feature coverage** | 41% of OpenDRIVE | ~95% |
-| **Performance** | JS numeric integration | Compiled C++ (5-10× faster) |
-| **Sampling** | Fixed 1m steps | Adaptive error-bounded |
-| **Maintenance** | We maintain geometry code | Community-maintained library |
-| **Bundle size** | ~15KB (source only) | ~200-400KB (WASM binary) |
-| **Accuracy** | Simpson's rule approximation | Native double precision |
-
-## How WASM Integration Would Work
+### How WASM Integration Works
 
 ```mermaid
 sequenceDiagram
@@ -101,7 +61,7 @@ sequenceDiagram
     LB->>TS: onMessage(MapAsamOpenDrive)
     TS->>TS: Extract OpenDRIVE XML
     TS->>WASM: OpenDriveMap(xml, options)
-    Note over WASM: C++ parses XML,<br/>builds road network
+    Note over WASM: C++ parses XML,<br/>builds road network,<br/>guarantees continuity
 
     loop For each Road
         TS->>WASM: road.get_lane_mesh(lane, eps)
@@ -121,10 +81,25 @@ sequenceDiagram
     TS-->>LB: SceneUpdate {entities[]}
 ```
 
-The C++ library does all the heavy computation (geometry evaluation, tessellation, mesh generation). TypeScript only:
+The C++ library does **all** geometry computation (reference line evaluation, lane boundary calculation, tessellation, road mark meshing). TypeScript only:
 1. Passes in the XML string
 2. Calls the C++ API via Emscripten bindings
 3. Maps the returned `Mesh3D`/`Line3D` data to Foxglove schema types
+
+### Why the Interim TypeScript Has Visual Bugs
+
+Per [ODR §9.2], the standard guarantees:
+- `refline_no_gaps` — reference lines have no gaps within a road
+- `refline_no_kinks` — reference lines are C1 continuous (tangent-continuous)
+- Lane linkage [ODR §11.5] — lanes connected across sections must use `<link>` predecessor/successor
+
+The TypeScript engine violates these by:
+- Not using `<laneOffset>` [ODR §11.4] to shift the center lane
+- Rendering each road/section independently without honoring lane links
+- Using fixed step size instead of adaptive sampling (misses tight curves)
+- Not using the road network topology (predecessor/successor) to ensure visual continuity at junctions
+
+libOpenDRIVE handles ALL of these correctly because it builds the full road network graph and computes geometry with proper continuity constraints.
 
 ## Current Module Structure
 
@@ -138,27 +113,19 @@ graph TD
         CONV[sceneUpdateConverter.ts<br/>Main pipeline + caching]
     end
 
-    subgraph Parser
+    subgraph "To be replaced by WASM"
         PARSE[parseOpenDriveXml.ts<br/>XML → typed model]
-        TYPES[types.ts<br/>OpenDRIVE data model]
-    end
-
-    subgraph "Geometry Engine (would be replaced by WASM)"
         REF[referenceLineGeometry.ts<br/>5 geometry types + elevation]
         FRES[fresnel.ts<br/>Euler spiral integration]
         LANE[laneGeometry.ts<br/>Width accumulation]
         TESS[tessellation.ts<br/>Triangle strip meshing]
     end
 
-    subgraph Features
+    subgraph "Schema Adapter (keeps)"
         FL[buildLaneEntity.ts<br/>→ TriangleListPrimitive]
         FB[buildLaneBoundaryEntity.ts<br/>→ LinePrimitive]
         FM[buildRoadMarkingEntity.ts<br/>→ LinePrimitive]
-    end
-
-    subgraph Utils
         SCENE_U[scene.ts<br/>Foxglove primitive factories]
-        PROTO[proto.ts<br/>Protobuf handling]
     end
 
     INDEX --> CONV
@@ -174,20 +141,20 @@ graph TD
     FL --> SCENE_U
     FB --> SCENE_U
     FM --> SCENE_U
-    CONV --> PROTO
 
-    style REF fill:#ffe0b2,stroke:#e65100
-    style FRES fill:#ffe0b2,stroke:#e65100
-    style LANE fill:#ffe0b2,stroke:#e65100
-    style TESS fill:#ffe0b2,stroke:#e65100
+    style PARSE fill:#ffcdd2,stroke:#c62828
+    style REF fill:#ffcdd2,stroke:#c62828
+    style FRES fill:#ffcdd2,stroke:#c62828
+    style LANE fill:#ffcdd2,stroke:#c62828
+    style TESS fill:#ffcdd2,stroke:#c62828
 ```
 
-The orange-highlighted modules (`src/geometry/*`) are the ones that would be **replaced** by libOpenDRIVE WASM calls. Everything else (parser, features, utils) stays as TypeScript.
+Red-highlighted modules will be **replaced** by libOpenDRIVE WASM calls. The schema adapter (feature builders, scene utilities) stays as TypeScript.
 
 ## Design Principles
 
 1. **Standards-based** — Every implementation references ASAM OpenDRIVE V1.8.1 section numbers
-2. **WASM-ready** — Geometry engine is isolated so it can be swapped for C++ WASM module
+2. **WASM kernel** — libOpenDRIVE C++ handles all geometry; TypeScript adapts to Foxglove
 3. **Stateless conversion** — Each `SceneUpdate` is self-contained (no incremental state)
 4. **Cache-friendly** — Identical maps produce identical output (memoized by reference)
 5. **Foxglove-native** — Direct mapping to `SceneEntity` primitives without intermediate formats
