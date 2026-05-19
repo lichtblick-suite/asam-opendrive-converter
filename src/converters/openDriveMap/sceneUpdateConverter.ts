@@ -424,7 +424,7 @@ function buildLaneSurfaceEntities(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Build LINE_LIST entities from lane outline indices.
+ * Build LINE_LIST entities from lane outline indices, one per lane.
  *
  * [libODR] get_lane_outline_indices() returns pairs of vertex indices:
  *   - Connects outer border vertices along s: (2i)→(2i+2)
@@ -452,49 +452,71 @@ function buildLaneBoundaryEntities(
   }
 
   const vertices = lanesMesh.vertices;
-  const points: Point3[] = [];
-  const usedIndices = new Set<number>();
+  const numVerts = vertices.size();
 
-  for (let i = 0; i < numOutline; i++) {
-    usedIndices.add(outlineIndices.get(i));
+  // Pre-extract all vertices with z-offset
+  const allPoints = extractVertices(vertices, BOUNDARY_Z_OFFSET);
+
+  // Pre-extract all outline index pairs
+  const outlinePairs: [number, number][] = [];
+  for (let i = 0; i + 1 < numOutline; i += 2) {
+    outlinePairs.push([outlineIndices.get(i), outlineIndices.get(i + 1)]);
   }
-
-  // Build compact vertex array with z-offset
-  const vertexRemap = new Map<number, number>();
-  for (const idx of usedIndices) {
-    const v = vertices.get(idx);
-    vertexRemap.set(idx, points.length);
-    points.push({ x: v[0], y: v[1], z: v[2] + BOUNDARY_Z_OFFSET });
-  }
-
-  // Remap line indices
-  const lineIndices: number[] = [];
-  for (let i = 0; i < numOutline; i++) {
-    lineIndices.push(vertexRemap.get(outlineIndices.get(i))!);
-  }
-
   outlineIndices.delete();
 
-  // [FG-ENTITY] Single entity for all lane boundaries
-  const entity = makeSceneEntity(
-    "odr_lane_boundaries",
-    GLOBAL_FRAME_ID,
-    timestamp,
-  );
-  entity.lines = [
-    {
-      type: 2, // [FG-LINE] LINE_LIST: indices consumed in pairs
-      pose: IDENTITY_POSE, // [ODR §8.2] points are absolute inertial coordinates
-      thickness: LANE_BOUNDARY_WIDTH,
-      scale_invariant: false, // [FG-LINE] world-space meters
-      points,
-      color: LANE_BOUNDARY_COLOR,
-      colors: [], // [FG-LINE] empty → uniform color
-      indices: lineIndices,
-    },
-  ];
+  // Split outline pairs per lane chunk, same as buildLaneSurfaceEntities
+  const laneKeys = lanesMesh.lane_start_indices.keys();
+  const numLanes = laneKeys.size();
+  const entities: PartialSceneEntity[] = [];
 
-  return [entity];
+  for (let li = 0; li < numLanes; li++) {
+    const startIdx = laneKeys.get(li);
+    const endIdx = li + 1 < numLanes ? laneKeys.get(li + 1) : numVerts;
+
+    const lanePoints: Point3[] = [];
+    const lineIndices: number[] = [];
+    const vertexRemap = new Map<number, number>();
+
+    for (const [a, b] of outlinePairs) {
+      if (a >= startIdx && a < endIdx && b >= startIdx && b < endIdx) {
+        lineIndices.push(
+          remapVertex(a, vertexRemap, allPoints, lanePoints),
+          remapVertex(b, vertexRemap, allPoints, lanePoints),
+        );
+      }
+    }
+
+    if (lineIndices.length === 0) {
+      continue;
+    }
+
+    const roadId = lanesMesh.get_road_id(startIdx);
+    const laneId = lanesMesh.get_lane_id(startIdx);
+    const s0 = lanesMesh.get_lanesec_s0(startIdx);
+    const entityId = `odr_boundary_r${roadId}_s${s0.toFixed(2)}_l${laneId.toString()}`;
+
+    const entity = makeSceneEntity(entityId, GLOBAL_FRAME_ID, timestamp);
+    entity.lines = [
+      {
+        type: 2, // [FG-LINE] LINE_LIST: indices consumed in pairs
+        pose: IDENTITY_POSE,
+        thickness: LANE_BOUNDARY_WIDTH,
+        scale_invariant: false,
+        points: lanePoints,
+        color: LANE_BOUNDARY_COLOR,
+        colors: [],
+        indices: lineIndices,
+      },
+    ];
+    entity.metadata = [
+      { key: "road_id", value: roadId },
+      { key: "lane_id", value: String(laneId) },
+    ];
+    entities.push(entity);
+  }
+
+  laneKeys.delete();
+  return entities;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

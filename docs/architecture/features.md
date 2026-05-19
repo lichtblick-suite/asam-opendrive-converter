@@ -31,10 +31,12 @@ This builder uses `lanes_mesh.get_lane_outline_indices()` to extract the lane ou
 
 Current rendering characteristics:
 
-- one `SceneEntity` with ID `odr_lane_boundaries`
+- one `SceneEntity` per lane chunk with ID `odr_boundary_r{roadId}_s{s0}_l{laneId}`
 - `type = LINE_LIST`
 - thickness `0.08 m`
 - z-offset `+0.01 m` to avoid z-fighting with lane surfaces
+
+**Metadata:** `road_id`, `lane_id`
 
 ## Road Markings
 
