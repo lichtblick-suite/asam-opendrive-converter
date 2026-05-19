@@ -9,5 +9,8 @@ npx lint-staged || exit 1
 # Audit for security vulnerabilities
 npm audit --audit-level=high || exit 1
 
-# Verify build
+# Verify extension build
 npm run build || exit 1
+
+# Verify docs build
+(cd website && npm install --silent && npm run build) || exit 1
