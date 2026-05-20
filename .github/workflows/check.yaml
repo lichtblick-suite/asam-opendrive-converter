@@ -30,7 +30,7 @@ jobs:
 
       - name: Setup Emscripten
         if: steps.cache-wasm.outputs.cache-hit != 'true'
-        uses: mymindstorm/setup-emsdk@v14
+        uses: mymindstorm/setup-emsdk@v16
         with:
           version: latest
 
