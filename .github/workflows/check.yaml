@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wasm-artifacts
           path: src/wasm/
