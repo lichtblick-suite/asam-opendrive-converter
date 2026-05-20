@@ -24,7 +24,7 @@
     "road-network"
   ],
   "scripts": {
-    "build:wasm": "scripts/build-wasm.sh",
+    "build:wasm": "node scripts/build-wasm.js",
     "build:wasm:check": "node scripts/check-wasm.js",
     "build": "npm run build:wasm:check && lichtblick-extension build",
     "lichtblick:prepublish": "npm run build:wasm:check && lichtblick-extension build --mode production",

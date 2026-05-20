@@ -47,9 +47,13 @@ jobs:
 
   # Phase 2: TypeScript lint, test, build (depends on WASM)
   check:
-    name: check
+    name: check (${{ matrix.os }})
     needs: build-wasm
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     defaults:
       run:
         shell: bash

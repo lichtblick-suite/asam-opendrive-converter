@@ -8,6 +8,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -16,7 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          persist-credentials: false
           fetch-depth: 0
 
       - name: Extract and validate version
@@ -43,7 +45,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git"
           git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
           git push origin "${{ steps.version.outputs.tag }}"
 
@@ -55,13 +56,12 @@ jobs:
       - name: Generate changelog for this release
         uses: janheinrichmerker/action-github-changelog-generator@v2.4
         with:
-          token: ${{ secrets.LICHTBLICK_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit updated CHANGELOG.md
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git"
           git add CHANGELOG.md
           git diff --cached --quiet && echo "No changelog changes to commit" || {
             git commit -m "docs: update CHANGELOG for ${{ steps.version.outputs.tag }} [skip ci]"
@@ -99,7 +99,7 @@ jobs:
         id: create_release
         uses: "plu5/automatic-releases-with-sha-action@main"
         with:
-          repo_token: "${{ secrets.PAT_TOKEN }}"
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: ${{ steps.version.outputs.tag }}
           prerelease: false
           title: ASAM OpenDRIVE Converter ${{ steps.version.outputs.tag }}

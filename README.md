@@ -46,13 +46,41 @@ All geometry computation is handled by [libOpenDRIVE](https://github.com/lichtbl
 ### Prerequisites
 
 - **Node.js** ≥ 20.19, **npm** ≥ 10
+- **CMake** ≥ 3.14
+- **Ninja** (recommended) or Make
 - **Emscripten SDK** (for building the WASM module)
 
+#### Linux / macOS
+
 ```bash
+# Install CMake and Ninja (if not already installed)
+# Ubuntu/Debian:
+sudo apt-get install cmake ninja-build
+# macOS:
+brew install cmake ninja
+
 # Install emsdk (one-time)
-git clone https://github.com/emscripten-core/emsdk.git
-cd emsdk && ./emsdk install latest && ./emsdk activate latest
-source emsdk_env.sh
+git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
+cd ~/emsdk && ./emsdk install latest && ./emsdk activate latest
+source ~/emsdk/emsdk_env.sh
+```
+
+#### Windows
+
+```powershell
+# Install prerequisites via winget
+winget install OpenJS.NodeJS.LTS
+winget install Kitware.CMake
+winget install Ninja-build.Ninja
+
+# Install emsdk (one-time)
+git clone https://github.com/emscripten-core/emsdk.git C:\emsdk
+cd C:\emsdk
+.\emsdk.bat install latest
+.\emsdk.bat activate latest --permanent
+
+# Set EMSDK env var (for the build script to auto-detect)
+[Environment]::SetEnvironmentVariable("EMSDK", "C:\emsdk", "User")
 ```
 
 ### Local Development
@@ -184,7 +212,7 @@ asam-opendrive-converter/
 │   └── src/Embind.cpp          # Emscripten bindings for WASM export
 ├── CMakeLists.txt              # WASM build configuration
 ├── scripts/
-│   ├── build-wasm.sh           # Build WASM module (Phase 1)
+│   ├── build-wasm.js           # Build WASM module (Phase 1, cross-platform)
 │   └── check-wasm.js           # Verify artifacts exist
 ├── src/
 │   ├── index.ts                # Extension entry point (activate)

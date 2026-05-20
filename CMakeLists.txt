@@ -1,4 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
+
+# Suppress deprecation warnings from third-party CMakeLists (e.g. pugixml)
+# that use cmake_minimum_required(VERSION < 3.10)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.24")
+  cmake_policy(SET CMP0135 NEW)
+endif()
+set(CMAKE_POLICY_VERSION_MINIMUM 3.10 CACHE STRING "")
+
 project(libOpenDRIVE_WASM)
 
 # Build libOpenDRIVE as a WASM module using Emscripten
