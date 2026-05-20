@@ -1,6 +1,7 @@
 /**
- * Lazy-loading wrapper for the libOpenDRIVE WASM module.
- * Loads the module on first use and caches the instance.
+ * WASM module loader for libOpenDRIVE (cached singleton).
+ * Called eagerly at converter registration (activate()) to avoid
+ * races where the first map message arrives before WASM is ready.
  *
  * [libODR] The WASM binary (~400-500KB) contains the full libOpenDRIVE C++
  *   library compiled via Emscripten. It handles all OpenDRIVE geometry
@@ -13,7 +14,7 @@ import type { LibOpenDRIVEModule, CreateLibOpenDRIVE } from "./types";
 let modulePromise: Promise<LibOpenDRIVEModule> | undefined;
 
 /**
- * Get the libOpenDRIVE WASM module instance (lazy-loaded, cached singleton).
+ * Get the libOpenDRIVE WASM module instance (cached singleton).
  * If loading fails, the next call will retry.
  */
 export async function getLibOpenDRIVE(): Promise<LibOpenDRIVEModule> {

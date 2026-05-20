@@ -38,6 +38,9 @@ function makeEvent(
 describe("registerOpenDriveMapConverter", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: WASM load never resolves (tests that need it override this)
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    mockedGetLibOpenDRIVE.mockReturnValue(new Promise(() => {}));
   });
 
   it("returns a converter function", () => {
@@ -55,12 +58,6 @@ describe("registerOpenDriveMapConverter", () => {
   });
 
   it("returns empty entities while WASM module is loading", () => {
-    // getLibOpenDRIVE returns a promise that never resolves during this test
-    mockedGetLibOpenDRIVE.mockReturnValue(
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      new Promise(() => {}),
-    );
-
     const converter = registerOpenDriveMapConverter();
     const { msg, event } = makeEvent({
       map_reference: "test",
@@ -69,15 +66,11 @@ describe("registerOpenDriveMapConverter", () => {
 
     const result = converter(msg, event);
     expect(result.entities).toEqual([]);
+    // WASM load is triggered eagerly at registration
     expect(mockedGetLibOpenDRIVE).toHaveBeenCalledTimes(1);
   });
 
   it("does not call getLibOpenDRIVE multiple times while loading", () => {
-    mockedGetLibOpenDRIVE.mockReturnValue(
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      new Promise(() => {}),
-    );
-
     const converter = registerOpenDriveMapConverter();
     const { msg, event } = makeEvent({
       map_reference: "test",
@@ -88,7 +81,7 @@ describe("registerOpenDriveMapConverter", () => {
     converter(msg, event);
     converter(msg, event);
 
-    // Should only trigger load once
+    // Called once at registration, not again on each message
     expect(mockedGetLibOpenDRIVE).toHaveBeenCalledTimes(1);
   });
 

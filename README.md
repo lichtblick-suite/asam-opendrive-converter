@@ -6,7 +6,7 @@ Visualizes ASAM OpenDRIVE road network maps from [OMEGA PRIME](https://github.co
 
 This extension registers a **message converter** that transforms `osi3.MapAsamOpenDrive` protobuf messages into `foxglove.SceneUpdate` scene entities. The OpenDRIVE map is rendered as:
 
-- **Lane surfaces** — color-coded triangle meshes (18 lane types)
+- **Lane surfaces** — color-coded triangle meshes (24 lane types)
 - **Lane boundaries** — white line segments along lane outlines
 - **Road markings** — filled polygon meshes with natural dash/gap patterns
 - **Road objects** — triangle meshes for OpenDRIVE road objects
@@ -25,6 +25,8 @@ The map is static — it is processed once per unique `map_reference` + panel se
 
 ## Supported OpenDRIVE Elements
 
+All geometry computation is handled by [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE) (targets **OpenDRIVE 1.4**).
+
 | Element | Status |
 |---------|--------|
 | Road reference lines (line, arc, spiral, poly3, paramPoly3, cubic bezier) | ✅ |
@@ -34,7 +36,7 @@ The map is static — it is processed once per unique `map_reference` + panel se
 | Road markings (solid, broken, colors) | ✅ |
 | Lane boundaries | ✅ |
 | Elevation profile | ✅ |
-| Superelevation/crossfall | ✅ (handled by libOpenDRIVE) |
+| Superelevation/crossfall | ✅ |
 | Junctions | ✅ |
 | Traffic signals & signs | ✅ |
 | Road objects (barriers, poles, etc.) | ✅ |
@@ -199,7 +201,7 @@ asam-opendrive-converter/
 │   │   ├── proto.ts            # MapAsamOpenDrive interface
 │   │   └── scene.ts            # Foxglove SceneEntity helpers
 │   └── wasm/
-│       ├── index.ts            # Lazy WASM loader (singleton)
+│       ├── index.ts            # Eager WASM loader (singleton, starts at activate())
 │       ├── types.ts            # TypeScript interfaces for WASM module
 │       └── libOpenDRIVE.js     # [generated] WASM+JS (SINGLE_FILE)
 └── .github/workflows/check.yaml  # 2-phase CI (build-wasm → check)
