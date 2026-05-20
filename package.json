@@ -41,7 +41,7 @@
     "npm": ">=10.0.0"
   },
   "devDependencies": {
-    "@foxglove/schemas": "^1.9.0",
+    "@foxglove/schemas": "^2.0.0",
     "@lichtblick/eslint-plugin": "^2.0.7",
     "@lichtblick/suite": "^1.25.0",
     "@types/jest": "^30.0.0",
