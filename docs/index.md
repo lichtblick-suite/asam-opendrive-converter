@@ -17,7 +17,7 @@ This extension enables visualization of OpenDRIVE road networks stored in [OMEGA
 - **Road objects** — barriers, poles, buildings, vegetation [ODR §13]
 - **Road signals** — traffic signs and signals [ODR §14]
 
-Geometry computation is handled by [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE), compiled to WebAssembly for in-browser execution.
+Geometry computation is handled by [libOpenDRIVE](https://github.com/lichtblick-suite/libOpenDRIVE) (fork of [pageldev/libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE)), compiled to WebAssembly for in-browser execution.
 
 ## Key Features
 
@@ -31,7 +31,7 @@ Geometry computation is handled by [libOpenDRIVE](https://github.com/pageldev/li
 | Road signals | Traffic signs and signals |
 | WASM geometry | libOpenDRIVE compiled to WebAssembly |
 | Caching | Identical maps are computed once and reused |
-| Standards-based | All implementations reference ASAM OpenDRIVE V1.8.1 |
+| Standards-based | Code comments reference ASAM OpenDRIVE V1.8.1 sections; geometry engine targets V1.4 |
 
 ## Quick Start
 

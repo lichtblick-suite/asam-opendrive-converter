@@ -152,6 +152,6 @@ This document maps OpenDRIVE features across four layers:
 ## References
 
 - [ODR] ASAM OpenDRIVE V1.8.1: https://publications.pages.asam.net/standards/ASAM_OpenDRIVE/ASAM_OpenDRIVE_Specification/v1.8.1/specification/
-- [libODR] pageldev/libOpenDRIVE: https://github.com/pageldev/libOpenDRIVE/
+- [libODR] lichtblick-suite/libOpenDRIVE: https://github.com/lichtblick-suite/libOpenDRIVE (fork of https://github.com/pageldev/libOpenDRIVE)
 - [FG-SCENE] Foxglove SceneUpdate: https://docs.foxglove.dev/docs/sdk/schemas/scene-update
 - See `docs/references/` for detailed standard reference documents.

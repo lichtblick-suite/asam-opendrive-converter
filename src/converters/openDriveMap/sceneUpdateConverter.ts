@@ -25,7 +25,7 @@
  * [ODR §14]    Road signals — traffic signs and signals
  *
  * [libODR]     libOpenDRIVE v0.6.0 — C++ OpenDRIVE parser & mesh generator
- *              https://github.com/pageldev/libOpenDRIVE
+ *              https://github.com/lichtblick-suite/libOpenDRIVE
  *              Handles ALL geometry: adaptive tessellation (eps=chord error),
  *              laneOffset, superelevation, crossfall, lane height, spirals.
  *

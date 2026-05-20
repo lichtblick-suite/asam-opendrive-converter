@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - OpenDRIVE map visualization from OMEGA PRIME MCAP recordings
 - libOpenDRIVE C++ compiled to WebAssembly (SINGLE_FILE mode) for geometry computation
-- Lane surfaces as color-coded triangle meshes (18 lane types)
+- Lane surfaces as color-coded triangle meshes (24 lane types)
 - Lane boundaries as line primitives
 - Road markings as filled triangle meshes with natural dash/gap patterns
 - Road objects [ODR §13] as triangle meshes

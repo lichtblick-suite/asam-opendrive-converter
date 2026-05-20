@@ -30,6 +30,12 @@ test-data/mapping.json
 .DS_Store
 Thumbs.db
 
+# Test output
+coverage/
+
+# Logs
+*.log
+
 # Local playground / scratch
 .playground/
 

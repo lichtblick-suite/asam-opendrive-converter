@@ -80,10 +80,10 @@ jobs:
         run: npm run build:wasm:check
 
       - name: Type Check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Audit Dependencies
-        run: npm audit
+        run: npm audit --audit-level=high
 
       - name: Test Project
         run: npm test

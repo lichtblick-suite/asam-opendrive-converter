@@ -21,7 +21,7 @@ The converter uses the XML payload directly; there is no intermediate TypeScript
 
 **Files:** `src/wasm/index.ts`, `src/converters/openDriveMap/sceneUpdateConverter.ts`
 
-`sceneUpdateConverter.ts` lazily loads libOpenDRIVE and calls:
+`sceneUpdateConverter.ts` eagerly loads libOpenDRIVE at registration time and calls:
 
 1. `createFromXml(xml, ...)`
 2. `get_road_network_mesh(eps)`

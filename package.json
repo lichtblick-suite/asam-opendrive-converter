@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://github.com/lichtblick-suite/asam-opendrive-converter.git"
   },
+  "bugs": {
+    "url": "https://github.com/lichtblick-suite/asam-opendrive-converter/issues"
+  },
   "author": "Lichtblick contributors",
   "version": "0.1.0",
   "license": "Apache-2.0",
@@ -30,6 +33,7 @@
     "local-install": "lichtblick-extension install",
     "package": "lichtblick-extension package",
     "test": "jest",
+    "typecheck": "tsc --noEmit",
     "prepare": "husky"
   },
   "engines": {
