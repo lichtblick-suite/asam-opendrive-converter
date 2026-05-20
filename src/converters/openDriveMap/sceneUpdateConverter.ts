@@ -138,7 +138,17 @@ export function registerOpenDriveMapConverter(): (
 } {
   const ctx = createOpenDriveConverterContext();
   let wasmModule: LibOpenDRIVEModule | undefined;
-  let wasmLoading = false;
+
+  // Start WASM loading eagerly at registration time (called during activate()),
+  // not lazily on first message. This avoids the race where the first map message
+  // arrives before WASM is ready, producing an empty render with no re-delivery.
+  getLibOpenDRIVE()
+    .then((mod) => {
+      wasmModule = mod;
+    })
+    .catch((err: unknown) => {
+      console.error("[OpenDRIVE Converter] WASM load failed:", err);
+    });
 
   return (msg, event, _globalVariables, context) => {
     const emitAlert = context?.emitAlert;
@@ -175,28 +185,10 @@ export function registerOpenDriveMapConverter(): (
       return { deletions, entities: [] };
     }
 
-    // Trigger async WASM load; return empty until module is ready
+    // WASM is loaded eagerly at registration time. If it's still loading
+    // (e.g., very fast trace open), return empty — the message will be
+    // re-delivered via backfill on the next seek/interaction.
     if (!wasmModule) {
-      if (!wasmLoading) {
-        wasmLoading = true;
-        void getLibOpenDRIVE()
-          .then((mod) => {
-            wasmModule = mod;
-          })
-          .catch((err: unknown) => {
-            console.error("[OpenDRIVE Converter] WASM load failed:", err);
-            const alert: MessageConverterAlert = {
-              severity: "error",
-              message: "OpenDRIVE WASM module failed to load",
-              error: err instanceof Error ? err : new Error(String(err)),
-              tip: "The WebAssembly binary could not be loaded. Try reloading the application.",
-            };
-            emitAlert?.(alert, "opendrive-wasm-load-error");
-          })
-          .finally(() => {
-            wasmLoading = false;
-          });
-      }
       return { deletions, entities: [] };
     }
 
