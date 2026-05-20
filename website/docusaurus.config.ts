@@ -15,11 +15,13 @@ const config: Config = {
   projectName: "asam-opendrive-converter",
 
   onBrokenLinks: "warn",
-  onBrokenMarkdownLinks: "warn",
 
   markdown: {
     format: "md",
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
   },
 
   themes: ["@docusaurus/theme-mermaid"],

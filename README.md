@@ -25,7 +25,7 @@ The map is static — it is processed once per unique `map_reference` + panel se
 
 ## Supported OpenDRIVE Elements
 
-All geometry computation is handled by [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE) (targets **OpenDRIVE 1.4**).
+All geometry computation is handled by [libOpenDRIVE](https://github.com/lichtblick-suite/libOpenDRIVE) (fork of [pageldev/libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE), targets **OpenDRIVE 1.4**).
 
 | Element | Status |
 |---------|--------|

@@ -13,8 +13,9 @@ developed and maintained by their respective standards organizations.
 - **Standard:** ASAM OpenDRIVE — Open Dynamic Road Information for Vehicle
   Environment
 - **Current version:** V1.8.1 (released 21 Nov 2024). Note: ASAM's
-  publications page may also serve a newer draft (V1.9.0-RC2). This project
-  targets V1.8.1 as the latest stable release.
+  publications page may also serve a newer draft (V1.9.0-RC2). This project's
+  reference documentation describes V1.8.1 sections, but the geometry engine
+  (libOpenDRIVE) targets **OpenDRIVE 1.4**.
 - **License:** In alteration to the regular ASAM license terms, ASAM allows
   **unrestricted distribution** of this standard. §2 (1) of ASAM's regular
   license terms is substituted by: *"The licensor grants everyone a basic,
@@ -68,9 +69,9 @@ developed and maintained by their respective standards organizations.
 
 | File | Content | Primary Standard |
 |------|---------|------------------|
-| [`ASAM_OpenDRIVE_Standard.md`](./ASAM_OpenDRIVE_Standard.md) | Complete OpenDRIVE technical reference | ASAM OpenDRIVE V1.8.1 |
-| [`ASAM_OSI_Coordinate_System.md`](./ASAM_OSI_Coordinate_System.md) | OSI coordinate system & proto definitions | ASAM OSI V3.7.0, OMEGA PRIME |
-| [`Foxglove_SceneUpdate_Schema.md`](./Foxglove_SceneUpdate_Schema.md) | Foxglove visualization schema reference | foxglove-sdk |
+| `ASAM_OpenDRIVE_Standard.md` | Complete OpenDRIVE technical reference | ASAM OpenDRIVE V1.8.1 |
+| `ASAM_OSI_Coordinate_System.md` | OSI coordinate system & proto definitions | ASAM OSI V3.7.0, OMEGA PRIME |
+| `Foxglove_SceneUpdate_Schema.md` | Foxglove visualization schema reference | foxglove-sdk |
 | [`FEATURE_MAPPING_TABLE.md`](./FEATURE_MAPPING_TABLE.md) | Full feature mapping: Standard → libOpenDRIVE → TS → Foxglove | All standards + libOpenDRIVE |
 
 ---

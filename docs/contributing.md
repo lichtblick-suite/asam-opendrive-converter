@@ -26,6 +26,7 @@ All build commands are centralized in `package.json` — CI and developers use t
 | `npm run build:wasm:check` | Verify WASM artifacts exist (fails fast if missing) |
 | `npm run build` | Full build: check WASM + bundle TypeScript extension |
 | `npm test` | Run all tests (Jest) |
+| `npm run typecheck` | Type-check without emitting (runs `tsc --noEmit`) |
 | `npm run lint` | Lint with auto-fix |
 | `npm run lint:ci` | Lint without auto-fix (CI mode) |
 | `npm run package` | Create `.foxe` package |
@@ -47,7 +48,7 @@ npm test -- --watch         # Watch mode
 npm test -- --coverage      # With coverage report
 ```
 
-Test files go in `tests/**/*.spec.ts`. The test infrastructure uses Jest + ts-jest + jsdom with path alias support matching `tsconfig.json`.
+Test files go in `tests/**/*.spec.ts`. The test infrastructure uses Jest + ts-jest with path alias support matching `tsconfig.json`.
 
 ## Code Style
 

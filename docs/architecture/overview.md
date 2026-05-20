@@ -6,7 +6,7 @@ sidebar_position: 1
 
 ## libOpenDRIVE WASM Architecture
 
-This extension uses [libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE/) compiled to **WebAssembly** as the only geometry engine. TypeScript extracts the OpenDRIVE XML, loads the WASM module, adapts the returned meshes to Foxglove `SceneUpdate`, and caches the result per map/settings combination.
+This extension uses [libOpenDRIVE](https://github.com/lichtblick-suite/libOpenDRIVE) (fork of [pageldev/libOpenDRIVE](https://github.com/pageldev/libOpenDRIVE)) compiled to **WebAssembly** as the only geometry engine. TypeScript extracts the OpenDRIVE XML, loads the WASM module, adapts the returned meshes to Foxglove `SceneUpdate`, and caches the result per map/settings combination.
 
 ### High-Level Flow
 
