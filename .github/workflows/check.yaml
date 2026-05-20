@@ -23,7 +23,7 @@ jobs:
 
       - name: Cache WASM artifacts
         id: cache-wasm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: src/wasm/libOpenDRIVE.js
           key: wasm-${{ runner.os }}-${{ steps.submodule-hash.outputs.hash }}-${{ hashFiles('CMakeLists.txt', 'submodule/libOpenDRIVE/src/Embind.cpp') }}
