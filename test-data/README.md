@@ -12,7 +12,7 @@
 | `tunnels.mcap` | MCAP wrapping `tunnels.xodr` with playback timeline | Generated with `create_mcap.py` |
 | `multi_intersections.xodr` | 30+ roads, multiple junctions, dynamic traffic lights, pedestrian signals | [esmini](https://github.com/esmini/esmini) |
 | `multi_intersections.mcap` | MCAP wrapping `multi_intersections.xodr` with playback timeline | Generated with `create_mcap.py` |
-| `osi_centerline_example.mcap` | OSI centerline map example | — |
+| `osi_centerline_example.mcap` | OSI GroundTruth trace with centerline data (no OpenDRIVE map — not usable by this converter; included for reference) | [omega-prime](https://github.com/ika-rwth-aachen/omega-prime) |
 
 ## Licenses
 
@@ -21,6 +21,7 @@ All third-party test data files are licensed under the **Mozilla Public License 
 | Source | License | Link |
 |--------|---------|------|
 | [esmini/esmini](https://github.com/esmini/esmini) | MPL-2.0 | [LICENSE](https://github.com/esmini/esmini/blob/master/LICENSE) |
+| [ika-rwth-aachen/omega-prime](https://github.com/ika-rwth-aachen/omega-prime) | MPL-2.0 | [LICENSE](https://github.com/ika-rwth-aachen/omega-prime/blob/main/LICENSE) |
 | [Persival-GmbH/asam-openx-assets](https://github.com/Persival-GmbH/asam-openx-assets) | MPL-2.0 | [LICENSE](https://github.com/Persival-GmbH/asam-openx-assets/blob/main/LICENSE) |
 | [vectorgrp/OSC-NCAP-scenarios](https://github.com/vectorgrp/OSC-NCAP-scenarios) | MPL-2.0 | [LICENSE](https://github.com/vectorgrp/OSC-NCAP-scenarios/blob/main/LICENSE) |
 

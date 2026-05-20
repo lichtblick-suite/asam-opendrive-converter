@@ -149,17 +149,14 @@ npm run build
 
 ## Test Data
 
-Download test files from the [OMEGA PRIME repository](https://github.com/ika-rwth-aachen/omega-prime):
+Example MCAP files are included in `test-data/` (see [`test-data/README.md`](test-data/README.md) for details and licenses):
 
-```bash
-# Pre-built MCAP with embedded OpenDRIVE
-curl -LO https://raw.githubusercontent.com/ika-rwth-aachen/omega-prime/main/example_files/osi_centerline_example.mcap
+- **`pedestrian_fabriksgatan.mcap`** — full playback scenario with pedestrian OSI trace + map
+- **`combined_example.mcap`** — feature-rich merged map (highway + intersection + signals)
+- **`tunnels.mcap`** — tunnels, barriers, lane emergence, elevation
+- **`multi_intersections.mcap`** — dynamic traffic lights, pedestrian signals, complex junctions
 
-# OpenDRIVE map files
-curl -LO https://raw.githubusercontent.com/ika-rwth-aachen/omega-prime/main/example_files/fabriksgatan.xodr
-```
-
-To generate OMEGA PRIME MCAP files from OSI traces + OpenDRIVE maps:
+To generate your own MCAP from OpenDRIVE + OSI traces:
 
 ```bash
 pip install omega-prime
@@ -168,6 +165,13 @@ import omega_prime
 r = omega_prime.Recording.from_file('pedestrian.osi', map_path='fabriksgatan.xodr')
 r.to_mcap('test.mcap')
 "
+```
+
+Or use the standalone script for map-only MCAPs (no OSI trace needed):
+
+```bash
+pip install mcap
+python test-data/create_mcap.py my_map.xodr -o output.mcap
 ```
 
 ## Architecture
