@@ -23,14 +23,14 @@ jobs:
 
       - name: Cache WASM artifacts
         id: cache-wasm
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: src/wasm/libOpenDRIVE.js
           key: wasm-${{ runner.os }}-${{ steps.submodule-hash.outputs.hash }}-${{ hashFiles('CMakeLists.txt', 'submodule/libOpenDRIVE/src/Embind.cpp') }}
 
       - name: Setup Emscripten
         if: steps.cache-wasm.outputs.cache-hit != 'true'
-        uses: mymindstorm/setup-emsdk@v14
+        uses: mymindstorm/setup-emsdk@v16
         with:
           version: latest
 
@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: wasm-artifacts
           path: src/wasm/
