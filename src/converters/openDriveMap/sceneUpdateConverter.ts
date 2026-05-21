@@ -62,7 +62,7 @@
  *   No coordinate transformation is needed.
  *
  * CACHING: The map is static per [OMEGA] convention (single message on the
- * ground_truth_map topic). Results are cached by map_reference + settings hash.
+ * ground_truth_map topic). Results are cached by map_reference + xml_hash + settings hash.
  * ============================================================================
  */
 
@@ -77,7 +77,11 @@ import type {
 } from "@lichtblick/suite";
 
 import type { OpenDriveConverterSettings } from "./context";
-import { createOpenDriveConverterContext, DEFAULT_SETTINGS } from "./context";
+import {
+  createOpenDriveConverterContext,
+  DEFAULT_SETTINGS,
+  hashString,
+} from "./context";
 import {
   extractChunkKeys,
   extractVertices,
@@ -157,30 +161,35 @@ export function registerOpenDriveMapConverter(): (
       DEFAULT_SETTINGS;
     const settingsHash = JSON.stringify(config);
 
+    const xmlContent = msg.open_drive_xml_content;
+    const xmlHash = xmlContent ? hashString(xmlContent) : undefined;
+
     // Return cached result if map and settings haven't changed
     if (
       ctx.cachedEntities &&
       ctx.previousMapReference === (msg.map_reference ?? "") &&
+      ctx.previousXmlHash === xmlHash &&
       ctx.previousSettingsHash === settingsHash
     ) {
       return { deletions: [], entities: ctx.cachedEntities };
     }
 
-    // When settings change, delete all previous entities so toggled-off
-    // features are removed from the 3D scene immediately.
+    // When settings or map content change, delete all previous entities so
+    // the old geometry is removed from the 3D scene immediately.
+    const cacheExists = ctx.previousSettingsHash != undefined;
     const settingsChanged =
-      ctx.previousSettingsHash != undefined &&
-      ctx.previousSettingsHash !== settingsHash;
+      cacheExists && ctx.previousSettingsHash !== settingsHash;
+    const mapChanged = cacheExists && ctx.previousXmlHash !== xmlHash;
     const timestamp: Time = event.receiveTime;
     const deletions: {
       timestamp: Time;
       type: SceneEntityDeletionType;
       id: string;
-    }[] = settingsChanged
-      ? [{ timestamp, type: SceneEntityDeletionType.ALL, id: "" }]
-      : [];
+    }[] =
+      settingsChanged || mapChanged
+        ? [{ timestamp, type: SceneEntityDeletionType.ALL, id: "" }]
+        : [];
 
-    const xmlContent = msg.open_drive_xml_content;
     if (!xmlContent) {
       return { deletions, entities: [] };
     }
@@ -202,6 +211,7 @@ export function registerOpenDriveMapConverter(): (
 
       ctx.cachedEntities = entities;
       ctx.previousMapReference = msg.map_reference ?? "";
+      ctx.previousXmlHash = xmlHash;
       ctx.previousSettingsHash = settingsHash;
 
       return { deletions, entities };
