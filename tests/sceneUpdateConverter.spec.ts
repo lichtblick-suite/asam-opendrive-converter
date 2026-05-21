@@ -174,6 +174,85 @@ describe("registerOpenDriveMapConverter", () => {
     expect(result.deletions).toHaveLength(1);
     expect(result.deletions[0]!.type).toBe(1); // SceneEntityDeletionType.ALL = 1
   });
+
+  it("invalidates cache when XML content changes with same map_reference", async () => {
+    const mockModule = createMockWasmModule();
+    mockedGetLibOpenDRIVE.mockResolvedValue(mockModule);
+
+    const converter = registerOpenDriveMapConverter();
+
+    // First call — trigger WASM load
+    converter(
+      ...(Object.values(
+        makeEvent({
+          map_reference: "same_ref",
+          open_drive_xml_content: "<OpenDRIVE><road id='1'/></OpenDRIVE>",
+        }),
+      ) as [MapAsamOpenDrive, MessageEvent<MapAsamOpenDrive>]),
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Second call — generate and cache with first XML
+    const result1 = converter(
+      ...(Object.values(
+        makeEvent({
+          map_reference: "same_ref",
+          open_drive_xml_content: "<OpenDRIVE><road id='1'/></OpenDRIVE>",
+        }),
+      ) as [MapAsamOpenDrive, MessageEvent<MapAsamOpenDrive>]),
+    );
+
+    // Third call — same map_reference but DIFFERENT XML content
+    const result2 = converter(
+      ...(Object.values(
+        makeEvent({
+          map_reference: "same_ref",
+          open_drive_xml_content: "<OpenDRIVE><road id='2'/></OpenDRIVE>",
+        }),
+      ) as [MapAsamOpenDrive, MessageEvent<MapAsamOpenDrive>]),
+    );
+
+    // Should NOT return the cached reference — entities were regenerated
+    expect(result2.entities).not.toBe(result1.entities);
+  });
+
+  it("emits deletions when map content changes", async () => {
+    const mockModule = createMockWasmModule();
+    mockedGetLibOpenDRIVE.mockResolvedValue(mockModule);
+
+    const converter = registerOpenDriveMapConverter();
+    const xml1 = "<OpenDRIVE><road id='A'/></OpenDRIVE>";
+    const xml2 = "<OpenDRIVE><road id='B'/></OpenDRIVE>";
+
+    // First call — trigger WASM load
+    converter(
+      ...(Object.values(
+        makeEvent({ map_reference: "ref", open_drive_xml_content: xml1 }),
+      ) as [MapAsamOpenDrive, MessageEvent<MapAsamOpenDrive>]),
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Second call — generate entities with xml1
+    converter(
+      ...(Object.values(
+        makeEvent({ map_reference: "ref", open_drive_xml_content: xml1 }),
+      ) as [MapAsamOpenDrive, MessageEvent<MapAsamOpenDrive>]),
+    );
+
+    // Third call — different XML, should emit ALL deletion
+    const result = converter(
+      ...(Object.values(
+        makeEvent({ map_reference: "ref", open_drive_xml_content: xml2 }),
+      ) as [MapAsamOpenDrive, MessageEvent<MapAsamOpenDrive>]),
+    );
+
+    expect(result.deletions).toHaveLength(1);
+    expect(result.deletions[0]!.type).toBe(1); // SceneEntityDeletionType.ALL = 1
+  });
 });
 
 /** Creates a minimal mock WASM module that produces empty but valid meshes */

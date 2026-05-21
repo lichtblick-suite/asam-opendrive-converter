@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.1.1](https://github.com/lichtblick-suite/asam-opendrive-converter/tree/v0.1.1) — 2026-05-21
+
+### 🐛 Bug Fixes
+
+- Invalidate map cache when XML content changes across MCAP files
+
 ## [0.1.0](https://github.com/lichtblick-suite/asam-opendrive-converter/tree/v0.1.0) — 2026-05-20
 
 ### ♻️ Refactoring
