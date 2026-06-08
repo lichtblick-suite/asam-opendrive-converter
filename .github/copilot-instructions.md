@@ -29,6 +29,10 @@ Key files:
 - Code comments use `[ODR §X.Y]` notation referencing ASAM OpenDRIVE V1.8.1 sections
 - The geometry engine (libOpenDRIVE) targets OpenDRIVE **1.4**
 - Coordinate frame follows ASAM OSI / ISO 8855 conventions
+- **Authoritative spec references** are available locally in `submodule/asam-openx-standards/`:
+  - `submodule/asam-openx-standards/standards/asam-opendrive/` — ASAM OpenDRIVE spec
+  - `submodule/asam-openx-standards/standards/asam-osi/` — ASAM OSI spec (proto files)
+  - Use these for verifying standard compliance rather than external URLs
 
 ## Conventions
 
@@ -44,3 +48,4 @@ Key files:
 - `tryCall()` in sceneUpdateConverter.ts must remain catch-all (WASM throws RuntimeError, not TypeError)
 - WASM is loaded eagerly at registration time, not lazily on first message
 - SceneEntityDeletion.ALL must be emitted on settings changes for immediate visual feedback
+- **Documentation drift check**: When changing behavior (frame names, output formats, conventions), always grep `docs/` and code comments for references to the old behavior and update them in the same commit

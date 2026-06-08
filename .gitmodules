@@ -2,3 +2,6 @@
 	path = submodule/libOpenDRIVE
 	url = https://github.com/lichtblick-suite/libOpenDRIVE.git
 	branch = development
+[submodule "submodule/asam-openx-standards"]
+	path = submodule/asam-openx-standards
+	url = https://github.com/ASCS-eV/asam-openx-standards.git
