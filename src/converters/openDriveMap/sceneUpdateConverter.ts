@@ -57,9 +57,10 @@
  *    - Road markings → LinePrimitive LINE_LIST (outline indices, per-type color) [FG-LINE]
  *
  * COORDINATE MAPPING [ODR §8.2] → [FG-SCENE]:
- *   OpenDRIVE inertial frame is identical to Foxglove world frame when using
- *   frame_id="global" + IDENTITY_POSE. Both are right-handed with Z-up.
- *   No coordinate transformation is needed.
+ *   OpenDRIVE uses a right-handed Z-up inertial frame. The frame_id depends on
+ *   georeferencing: "proj_frame" when <geoReference> is present (CRS world),
+ *   "map_local" otherwise. IDENTITY_POSE is used (no entity-level transform).
+ *   The <offset> affine (if present) is baked into vertex positions.
  *
  * CACHING: The map is static per [OMEGA] convention (single message on the
  * ground_truth_map topic). Results are cached by map_reference + xml_hash + settings hash.
@@ -103,6 +104,9 @@ import {
   ROAD_SIGNAL_COLOR,
 } from "../../config/constants";
 import type { RgbaColor } from "../../config/constants";
+import { PROJ_FRAME_ID } from "../../config/projFrame";
+import type { GeoOffset, GeoReference } from "../../utils/georef";
+import { applyGeoOffsetToPoints, parseGeoReference } from "../../utils/georef";
 import type { MapAsamOpenDrive } from "../../utils/proto";
 import type { PartialSceneEntity, Point3 } from "../../utils/scene";
 import { IDENTITY_POSE, makeSceneEntity } from "../../utils/scene";
@@ -265,6 +269,14 @@ function generateMapEntities(
 ): PartialSceneEntity[] {
   const eps = config.stepSize > 0 ? config.stepSize : DEFAULT_EPS;
 
+  // [ODR §8.5] Parse georeferencing info from XML header
+  const geoRef: GeoReference = parseGeoReference(xmlContent);
+  const geoOffset: GeoOffset | undefined = geoRef.offset;
+
+  // Use "proj_frame" when geoReference is present (coordinates are in CRS world);
+  // fall back to "map_local" for maps without geographic context.
+  const frameId = geoRef.projString ? PROJ_FRAME_ID : GLOBAL_FRAME_ID;
+
   // [libODR] Parse OpenDRIVE — handles all geometry types [ODR §9],
   // elevation [ODR §10.5], superelevation [ODR §10.6], crossfall [ODR §10.7],
   // lane offset [ODR §11.4], lane linkage [ODR §11.5], lane width [ODR §11.6],
@@ -370,13 +382,33 @@ function generateMapEntities(
       );
     }
 
-    // Map-level metadata entity (proj4, coordinate offsets)
-    const mapInfoEntity = makeSceneEntity(
-      "map.info",
-      GLOBAL_FRAME_ID,
-      timestamp,
-    );
+    // Map-level metadata entity (proj4, coordinate offsets, frame info)
+    const mapInfoEntity = makeSceneEntity("map.info", frameId, timestamp);
     mapInfoEntity.metadata = [];
+    if (geoRef.projString) {
+      mapInfoEntity.metadata.push({
+        key: "geo_reference",
+        value: geoRef.projString,
+      });
+    }
+    if (geoOffset) {
+      mapInfoEntity.metadata.push({
+        key: "offset_x",
+        value: String(geoOffset.x),
+      });
+      mapInfoEntity.metadata.push({
+        key: "offset_y",
+        value: String(geoOffset.y),
+      });
+      mapInfoEntity.metadata.push({
+        key: "offset_z",
+        value: String(geoOffset.z),
+      });
+      mapInfoEntity.metadata.push({
+        key: "offset_hdg",
+        value: String(geoOffset.hdg),
+      });
+    }
     if (odrMap.proj4) {
       mapInfoEntity.metadata.push({ key: "proj4", value: odrMap.proj4 });
     }
@@ -392,6 +424,28 @@ function generateMapEntities(
     }
     if (mapInfoEntity.metadata.length > 0) {
       entities.push(mapInfoEntity);
+    }
+
+    // [ODR §8.5] Post-process: update frame_id and apply geo-offset to all geometry
+    for (const entity of entities) {
+      entity.frame_id = frameId;
+      if (geoOffset) {
+        if (entity.triangles) {
+          for (const tri of entity.triangles) {
+            applyGeoOffsetToPoints(tri.points, geoOffset);
+          }
+        }
+        if (entity.lines) {
+          for (const line of entity.lines) {
+            applyGeoOffsetToPoints(line.points, geoOffset);
+          }
+        }
+        if (entity.cubes) {
+          for (const cube of entity.cubes) {
+            applyGeoOffsetToPoints([cube.pose.position], geoOffset);
+          }
+        }
+      }
     }
 
     laneTypeMap.delete();

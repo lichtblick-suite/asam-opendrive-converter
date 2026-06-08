@@ -78,7 +78,7 @@ Signals are rendered as libOpenDRIVE-generated meshes with their pose already ba
 
 All generated entities use:
 
-- `frame_id="global"`
+- `frame_id="proj_frame"` (when `<geoReference>` is present) or `"map_local"` (fallback)
 - `frame_locked=true`
 - `lifetime={sec: 0, nsec: 0}`
-- `IDENTITY_POSE` with absolute OpenDRIVE inertial coordinates
+- `IDENTITY_POSE` with absolute coordinates (offset-applied when `<offset>` exists)

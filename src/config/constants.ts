@@ -7,7 +7,7 @@
  * [ODR §11.7]  Lane type — e_laneType values determine LANE_COLORS keys
  * [ODR §11.8]  Road markings — e_roadMarkColor determines ROAD_MARK_COLORS
  * [FG-SCENE]   Foxglove SceneUpdate — Color channels are float64 in [0, 1]
- * [ODR §8.2]   GLOBAL_FRAME_ID = "global" maps to inertial frame
+ * [ODR §8.2]   GLOBAL_FRAME_ID = "map_local" (fallback when no geoReference)
  * [ODR §12]    Junctions — JUNCTION_COLOR for connecting road surfaces
  *
  * COLOR VALUES: These are visualization choices, not standard-prescribed.
@@ -97,8 +97,12 @@ export const ROAD_MARK_COLORS: Record<string, RgbaColor> = {
 
 export const ROAD_MARK_WIDTH = 0.15;
 
-// Frame [ODR §8.2] — OpenDRIVE inertial frame = Foxglove global frame
-export const GLOBAL_FRAME_ID = "global";
+// Frame [ODR §8.2] — OpenDRIVE map-local inertial frame.
+// Used ONLY as fallback when no <geoReference> is present. This frame is
+// specific to the OpenDRIVE map and should NOT be confused with the OSI
+// converter's "global" frame (which is the simulation inertial frame).
+// When <geoReference> exists, "proj_frame" is used instead (see projFrame.ts).
+export const GLOBAL_FRAME_ID = "map_local";
 
 // Z-offsets to prevent z-fighting between overlapping layers
 export const LANE_Z_OFFSET = 0.0;

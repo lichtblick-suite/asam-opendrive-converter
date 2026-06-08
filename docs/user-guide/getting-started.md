@@ -60,4 +60,4 @@ The converter produces `SceneUpdate` messages with:
 - **Road objects**: triangle meshes for OpenDRIVE road objects
 - **Road signals**: triangle meshes for OpenDRIVE signals
 
-All entities use `frame_id="global"` (OpenDRIVE inertial frame = Foxglove world frame).
+All entities use `frame_id="proj_frame"` when the map has a `<geoReference>` (enabling alignment with the OSI converter), or `frame_id="map_local"` as fallback for maps without geographic context.

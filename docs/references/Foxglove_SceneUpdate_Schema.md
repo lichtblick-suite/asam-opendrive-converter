@@ -72,7 +72,7 @@ interface SceneEntity {
 |----------------|----------------------|----------------------------------|
 | `lifetime`     | `{sec:0, nsec:0}`   | Static map persists indefinitely |
 | `frame_locked` | `true`               | Map follows its coordinate frame |
-| `frame_id`     | `"global"`           | Matches OSI/OpenDRIVE inertial   |
+| `frame_id`     | `"proj_frame"` / `"map_local"` | `"proj_frame"` with geoReference; `"map_local"` without |
 
 ---
 

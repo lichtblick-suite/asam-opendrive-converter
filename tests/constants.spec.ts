@@ -41,8 +41,8 @@ describe("constants", () => {
     }
   });
 
-  it("uses 'global' as the frame ID per ODR §8.2", () => {
-    expect(GLOBAL_FRAME_ID).toBe("global");
+  it("uses 'map_local' as the fallback frame ID for maps without geoReference", () => {
+    expect(GLOBAL_FRAME_ID).toBe("map_local");
   });
 });
 
