@@ -10,10 +10,10 @@ sidebar_position: 99
 # Clone with submodules
 git clone --recurse-submodules https://github.com/lichtblick-suite/asam-opendrive-converter.git
 cd asam-opendrive-converter
-npm install
+yarn install
 
 # Build WASM module (requires emsdk — one-time unless libOpenDRIVE changes)
-npm run build:wasm
+yarn build:wasm
 ```
 
 ## Commands
@@ -22,30 +22,30 @@ All build commands are centralized in `package.json` — CI and developers use t
 
 | Command | Description |
 |---------|-------------|
-| `npm run build:wasm` | Compile libOpenDRIVE C++ → WASM via Emscripten |
-| `npm run build:wasm:check` | Verify WASM artifacts exist (fails fast if missing) |
-| `npm run build` | Full build: check WASM + bundle TypeScript extension |
-| `npm test` | Run all tests (Jest) |
-| `npm run typecheck` | Type-check without emitting (runs `tsc --noEmit`) |
-| `npm run lint` | Lint with auto-fix |
-| `npm run lint:ci` | Lint without auto-fix (CI mode) |
-| `npm run package` | Create `.foxe` package |
-| `npm run local-install` | Install to local Lichtblick |
+| `yarn build:wasm` | Compile libOpenDRIVE C++ → WASM via Emscripten |
+| `yarn build:wasm:check` | Verify WASM artifacts exist (fails fast if missing) |
+| `yarn build` | Full build: check WASM + bundle TypeScript extension |
+| `yarn test` | Run all tests (Jest) |
+| `yarn typecheck` | Type-check without emitting (runs `tsc --noEmit`) |
+| `yarn lint` | Lint with auto-fix |
+| `yarn lint:ci` | Lint without auto-fix (CI mode) |
+| `yarn package` | Create `.foxe` package |
+| `yarn local-install` | Install to local Lichtblick |
 
 ## Two-Phase Build
 
 The project uses a **two-phase build**:
 
-1. **Phase 1: C++ → WASM** (`npm run build:wasm`) — Compiles `submodule/libOpenDRIVE` with Emscripten. Cached locally in `src/wasm/` and in CI by submodule commit hash. Only rebuilds when the C++ source or Embind bindings change.
+1. **Phase 1: C++ → WASM** (`yarn build:wasm`) — Compiles `submodule/libOpenDRIVE` with Emscripten. Cached locally in `src/wasm/` and in CI by submodule commit hash. Only rebuilds when the C++ source or Embind bindings change.
 
-2. **Phase 2: TypeScript → Extension** (`npm run build`) — Bundles TypeScript + WASM artifacts into the Lichtblick extension.
+2. **Phase 2: TypeScript → Extension** (`yarn build`) — Bundles TypeScript + WASM artifacts into the Lichtblick extension.
 
 ## Testing
 
 ```bash
-npm test                    # Run all tests
-npm test -- --watch         # Watch mode
-npm test -- --coverage      # With coverage report
+yarn test                   # Run all tests
+yarn test --watch           # Watch mode
+yarn test --coverage        # With coverage report
 ```
 
 Test files go in `tests/**/*.spec.ts`. The test infrastructure uses Jest + ts-jest with path alias support matching `tsconfig.json`.
@@ -60,7 +60,7 @@ Test files go in `tests/**/*.spec.ts`. The test infrastructure uses Jest + ts-je
 ## Commit Conventions
 
 - Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
-- Pre-commit hooks enforce: tests, lint-staged, npm audit, build, docs build
+- Pre-commit hooks enforce: tests, lint-staged, yarn audit, build, docs build
 - Commit messages are validated by the `commit-msg` hook
 
 ## Architecture

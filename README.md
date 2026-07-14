@@ -45,7 +45,7 @@ All geometry computation is handled by [libOpenDRIVE](https://github.com/lichtbl
 
 ### Prerequisites
 
-- **Node.js** ≥ 20.19, **npm** ≥ 10
+- **Node.js** ≥ 20.19, **yarn** ≥ 1.22
 - **CMake** ≥ 3.14
 - **Ninja** (recommended) or Make
 - **Emscripten SDK** (for building the WASM module)
@@ -90,23 +90,23 @@ cd C:\emsdk
 git clone --recurse-submodules https://github.com/lichtblick-suite/asam-opendrive-converter.git
 cd asam-opendrive-converter
 
-# Install npm dependencies
-npm install
+# Install dependencies
+yarn install
 
 # Build the WASM module (cached — only needed once unless libOpenDRIVE changes)
-npm run build:wasm
+yarn build:wasm
 
 # Build the extension (checks WASM artifacts, then bundles TypeScript)
-npm run build
+yarn build
 
 # Install into local Lichtblick
-npm run local-install
+yarn local-install
 ```
 
 ### From Package
 
 ```bash
-npm run package
+yarn package
 # Install the generated .foxe file via Lichtblick's extension manager
 ```
 
@@ -116,14 +116,14 @@ All build commands are centralized in `package.json` — **CI and developers use
 
 | Command | Description |
 |---------|-------------|
-| `npm run build:wasm` | Compile libOpenDRIVE C++ → single-file WASM JS bundle in `src/wasm/` |
-| `npm run build:wasm:check` | Verify WASM artifacts exist (fails fast if missing) |
-| `npm run build` | Full build: check WASM + bundle TypeScript extension |
-| `npm test` | Run Jest unit tests |
-| `npm run lint` | ESLint with auto-fix |
-| `npm run lint:ci` | ESLint without auto-fix (CI mode) |
-| `npm run package` | Build production `.foxe` package |
-| `npm run local-install` | Install extension into local Lichtblick |
+| `yarn build:wasm` | Compile libOpenDRIVE C++ → single-file WASM JS bundle in `src/wasm/` |
+| `yarn build:wasm:check` | Verify WASM artifacts exist (fails fast if missing) |
+| `yarn build` | Full build: check WASM + bundle TypeScript extension |
+| `yarn test` | Run Jest unit tests |
+| `yarn lint` | ESLint with auto-fix |
+| `yarn lint:ci` | ESLint without auto-fix (CI mode) |
+| `yarn package` | Build production `.foxe` package |
+| `yarn local-install` | Install extension into local Lichtblick |
 
 ### Two-Phase Build
 
@@ -165,16 +165,16 @@ In the 3D panel topic settings, you can toggle:
 
 ```bash
 # Run tests
-npm test
+yarn test
 
 # Type-check
 npx tsc --noEmit
 
 # Rebuild WASM (after updating submodule/libOpenDRIVE)
-npm run build:wasm
+yarn build:wasm
 
 # Full build
-npm run build
+yarn build
 ```
 
 ## Test Data

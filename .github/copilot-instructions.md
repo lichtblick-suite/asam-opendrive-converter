@@ -40,7 +40,7 @@ Key files:
 - **Path aliases**: `@converters/`, `@config/`, `@utils/`, `@/` (mapped in tsconfig + jest)
 - **Testing**: Jest with ts-jest, test files in `tests/*.spec.ts`
 - **Linting**: ESLint with `@lichtblick/eslint-plugin` + prettier integration
-- **WASM build**: `npm run build:wasm` (requires Emscripten SDK)
+- **WASM build**: `yarn build:wasm` (requires Emscripten SDK)
 
 ## Important Rules
 
