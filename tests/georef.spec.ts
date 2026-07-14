@@ -1,7 +1,6 @@
 import {
-  applyGeoOffset,
-  applyGeoOffsetToPoints,
   areCrsEquivalent,
+  buildProjFrameTransform,
   parseGeoReference,
 } from "../src/utils/georef";
 
@@ -64,51 +63,76 @@ describe("parseGeoReference", () => {
   });
 });
 
-describe("applyGeoOffset", () => {
-  it("should apply pure translation (hdg=0)", () => {
-    const point = { x: 10, y: 20, z: 5 };
-    const offset = { x: 100, y: 200, z: 10, hdg: 0 };
-    const result = applyGeoOffset(point, offset);
-    expect(result.x).toBeCloseTo(110);
-    expect(result.y).toBeCloseTo(220);
-    expect(result.z).toBeCloseTo(15);
+describe("buildProjFrameTransform", () => {
+  const timestamp = { sec: 0, nsec: 0 };
+
+  it("places proj_frame as a child of the global root frame", () => {
+    const transform = buildProjFrameTransform(
+      { x: 349210.32, y: 5648717.38, z: 0, hdg: 0 },
+      timestamp,
+    );
+    expect(transform.parent_frame_id).toBe("global");
+    expect(transform.child_frame_id).toBe("proj_frame");
   });
 
-  it("should apply rotation + translation", () => {
-    // 90° rotation: (1,0) → (0,1)
-    const point = { x: 1, y: 0, z: 0 };
-    const offset = { x: 100, y: 200, z: 0, hdg: Math.PI / 2 };
-    const result = applyGeoOffset(point, offset);
-    expect(result.x).toBeCloseTo(100); // cos(90°)*1 - sin(90°)*0 + 100 = 0 + 100
-    expect(result.y).toBeCloseTo(201); // sin(90°)*1 + cos(90°)*0 + 200 = 1 + 200
-    expect(result.z).toBeCloseTo(0);
+  it("inverts a pure-translation offset (hdg=0)", () => {
+    const transform = buildProjFrameTransform(
+      { x: 1000, y: 2000, z: 50, hdg: 0 },
+      timestamp,
+    );
+    // With hdg=0 the inversion is simple negation
+    expect(transform.translation).toEqual({ x: -1000, y: -2000, z: -50 });
+    // Identity rotation
+    expect(transform.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
   });
 
-  it("should apply the ODR §8.5 formula correctly", () => {
-    // xWorld = x*cos(hdg) - y*sin(hdg) + xOffset
-    // yWorld = x*sin(hdg) + y*cos(hdg) + yOffset
-    const point = { x: 3, y: 4, z: 1 };
-    const hdg = Math.PI / 6; // 30°
+  it("inverts offset with heading (matches OSI inverted-offset math)", () => {
+    const hdg = 0.029;
+    const tx = 349210.32;
+    const ty = 5648717.38;
+    const transform = buildProjFrameTransform(
+      { x: tx, y: ty, z: 0, hdg },
+      timestamp,
+    );
+
+    const cosH = Math.cos(hdg);
+    const sinH = Math.sin(hdg);
+    // t_inv = -R(-hdg) * offset
+    expect(transform.translation.x).toBeCloseTo(-(tx * cosH + ty * sinH), 2);
+    expect(transform.translation.y).toBeCloseTo(tx * sinH - ty * cosH, 2);
+    expect(transform.translation.z).toBeCloseTo(0, 6);
+
+    // Inverse rotation quaternion about z by -hdg
+    expect(transform.rotation.z).toBeCloseTo(Math.sin(-hdg / 2), 6);
+    expect(transform.rotation.w).toBeCloseTo(Math.cos(-hdg / 2), 6);
+  });
+
+  it("resolves a proj_frame point back to global coordinates", () => {
+    // A map vertex at world/CRS coordinates world = R(hdg)*odr + offset
+    // must resolve to its original odr coordinates in the global frame.
+    const hdg = Math.PI / 6;
     const offset = { x: 10, y: 20, z: 2, hdg };
-    const result = applyGeoOffset(point, offset);
-    const cos30 = Math.cos(hdg);
-    const sin30 = Math.sin(hdg);
-    expect(result.x).toBeCloseTo(3 * cos30 - 4 * sin30 + 10);
-    expect(result.y).toBeCloseTo(3 * sin30 + 4 * cos30 + 20);
-    expect(result.z).toBeCloseTo(3);
-  });
-});
+    const odr = { x: 3, y: 4, z: 1 };
+    const cosH = Math.cos(hdg);
+    const sinH = Math.sin(hdg);
+    const world = {
+      x: odr.x * cosH - odr.y * sinH + offset.x,
+      y: odr.x * sinH + odr.y * cosH + offset.y,
+      z: odr.z + offset.z,
+    };
 
-describe("applyGeoOffsetToPoints", () => {
-  it("should mutate points in place", () => {
-    const points = [
-      { x: 0, y: 0, z: 0 },
-      { x: 1, y: 1, z: 1 },
-    ];
-    const offset = { x: 10, y: 20, z: 5, hdg: 0 };
-    applyGeoOffsetToPoints(points, offset);
-    expect(points[0]).toEqual({ x: 10, y: 20, z: 5 });
-    expect(points[1]).toEqual({ x: 11, y: 21, z: 6 });
+    const transform = buildProjFrameTransform(offset, timestamp);
+    // Apply transform: p_global = R(-hdg) * world + translation
+    const rx = cosH * world.x + sinH * world.y;
+    const ry = -sinH * world.x + cosH * world.y;
+    const pGlobal = {
+      x: rx + transform.translation.x,
+      y: ry + transform.translation.y,
+      z: world.z + transform.translation.z,
+    };
+    expect(pGlobal.x).toBeCloseTo(odr.x, 6);
+    expect(pGlobal.y).toBeCloseTo(odr.y, 6);
+    expect(pGlobal.z).toBeCloseTo(odr.z, 6);
   });
 });
 

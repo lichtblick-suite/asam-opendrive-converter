@@ -1,16 +1,18 @@
 /**
  * Georeferencing utilities for OpenDRIVE maps.
  *
- * Parses <geoReference> and <offset> from OpenDRIVE XML and applies
- * the affine transformation per [ODR §8.5] to convert map-local
- * coordinates into CRS world coordinates.
+ * Parses <geoReference> and <offset> from OpenDRIVE XML [ODR §8.5]. The
+ * <offset> is NOT baked into geometry; instead it is published as a
+ * FrameTransform placing "proj_frame" as a child of the root "global" frame
+ * (mirroring the OSI converter's proj_frame_offset handling).
  *
  * See: submodule/asam-openx-standards/standards/asam-opendrive/08-05-geo-referencing.md
  */
 
+import type { FrameTransform, Time } from "@foxglove/schemas";
 import proj4 from "proj4";
 
-import type { Point3 } from "../utils/scene";
+import { PROJ_FRAME_ID, ROOT_FRAME_ID } from "../config/projFrame";
 
 /**
  * Parsed georeferencing information from OpenDRIVE <header>.
@@ -79,37 +81,53 @@ function parseAttr(attrs: string, name: string): number | undefined {
 }
 
 /**
- * Apply the <offset> affine transform to a point [ODR §8.5]:
- *   xWorld = xODR * cos(hdg) - yODR * sin(hdg) + xOffset
- *   yWorld = xODR * sin(hdg) + yODR * cos(hdg) + yOffset
- *   zWorld = zODR + zOffset
+ * Build a FrameTransform placing "proj_frame" (CRS world) as a child of the
+ * root "global" frame [ODR §8.5]. Mirrors the OSI converter's handling of
+ * GroundTruth.proj_frame_offset.
+ *
+ * The <offset> defines the affine that maps map-local ODR coordinates to CRS
+ * world coordinates:
+ *   world = R(hdg) * odr + offset
+ *
+ * OpenDRIVE map geometry is published UN-BAKED in "proj_frame". To place
+ * "proj_frame" under "global", we publish the INVERTED offset — the pose of
+ * proj_frame's origin expressed in the global frame:
+ *   rotation    = R(-hdg)           (inverse rotation about z)
+ *   translation = -R(-hdg) * offset
+ *
+ * A point p in "proj_frame" then resolves to "global" as:
+ *   p_global = rotation * p + translation
  */
-export function applyGeoOffset(point: Point3, offset: GeoOffset): Point3 {
-  const cosH = Math.cos(offset.hdg);
-  const sinH = Math.sin(offset.hdg);
-  return {
-    x: point.x * cosH - point.y * sinH + offset.x,
-    y: point.x * sinH + point.y * cosH + offset.y,
-    z: point.z + offset.z,
-  };
-}
-
-/**
- * Apply the offset transform to all points in an array (in-place mutation for performance).
- */
-export function applyGeoOffsetToPoints(
-  points: Point3[],
+export function buildProjFrameTransform(
   offset: GeoOffset,
-): void {
-  const cosH = Math.cos(offset.hdg);
-  const sinH = Math.sin(offset.hdg);
-  for (const p of points) {
-    const x = p.x * cosH - p.y * sinH + offset.x;
-    const y = p.x * sinH + p.y * cosH + offset.y;
-    p.x = x;
-    p.y = y;
-    p.z = p.z + offset.z;
-  }
+  timestamp: Time,
+): FrameTransform {
+  const hdg = offset.hdg;
+  const cosH = Math.cos(hdg);
+  const sinH = Math.sin(hdg);
+
+  // Inverse rotation quaternion: rotation about z-axis by -hdg
+  // (+ 0 normalizes IEEE signed zero so identity compares cleanly)
+  const half = -hdg / 2;
+  const rotation = {
+    x: 0,
+    y: 0,
+    z: Math.sin(half) + 0,
+    w: Math.cos(half),
+  };
+
+  // Inverse translation: t_inv = -R(-hdg) * offset
+  //   R(-hdg): x' =  cosH * x + sinH * y ; y' = -sinH * x + cosH * y
+  const rx = cosH * offset.x + sinH * offset.y;
+  const ry = -sinH * offset.x + cosH * offset.y;
+
+  return {
+    timestamp,
+    parent_frame_id: ROOT_FRAME_ID,
+    child_frame_id: PROJ_FRAME_ID,
+    translation: { x: -rx, y: -ry, z: -offset.z },
+    rotation,
+  };
 }
 
 /**

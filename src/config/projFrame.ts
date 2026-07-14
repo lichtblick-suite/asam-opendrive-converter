@@ -19,8 +19,10 @@
  *   parent_frame_id="global" and child_frame_id="proj_frame",
  *   using the INVERTED GroundTruth.proj_frame_offset (when available).
  *
- * - The OpenDRIVE converter publishes map geometry in frame_id="proj_frame"
- *   after applying the <offset> element (if present) per [ODR §8.5].
+ * - The OpenDRIVE converter publishes map geometry (un-baked) in
+ *   frame_id="proj_frame" AND emits the same FrameTransform
+ *   (parent="global", child="proj_frame") from the INVERTED <offset>
+ *   element per [ODR §8.5]. The <offset> is NOT baked into vertices.
  *
  * This allows Lichtblick to chain the transforms and align both datasets
  * without either plugin needing to read the other's topic.
@@ -56,3 +58,15 @@
  * the OSI converter (publishes FrameTransform: parent=global, child=proj_frame).
  */
 export const PROJ_FRAME_ID = "proj_frame";
+
+/**
+ * The shared root frame name (OSI simulation inertial frame).
+ *
+ * "proj_frame" is published as a CHILD of this frame. The OpenDRIVE converter
+ * emits a FrameTransform(parent=ROOT_FRAME_ID, child=PROJ_FRAME_ID) built from
+ * the INVERTED <offset> [ODR §8.5], mirroring the OSI converter which emits the
+ * same transform from the inverted GroundTruth.proj_frame_offset. Keeping
+ * "global" as the tree root lets Lichtblick resolve OpenDRIVE map geometry
+ * (in "proj_frame") alongside OSI objects (in "global").
+ */
+export const ROOT_FRAME_ID = "global";

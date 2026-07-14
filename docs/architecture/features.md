@@ -81,4 +81,4 @@ All generated entities use:
 - `frame_id="proj_frame"` (when `<geoReference>` is present) or `"map_local"` (fallback)
 - `frame_locked=true`
 - `lifetime={sec: 0, nsec: 0}`
-- `IDENTITY_POSE` with absolute coordinates (offset-applied when `<offset>` exists)
+- `IDENTITY_POSE` with un-baked coordinates. When `<offset>` exists, it is **not** applied to vertices; instead a `FrameTransform(parent="global", child="proj_frame")` (inverted `<offset>`) is published so Lichtblick resolves `proj_frame` into `global` (mirrors the OSI converter).

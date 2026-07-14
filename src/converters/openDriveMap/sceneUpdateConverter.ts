@@ -60,7 +60,9 @@
  *   OpenDRIVE uses a right-handed Z-up inertial frame. The frame_id depends on
  *   georeferencing: "proj_frame" when <geoReference> is present (CRS world),
  *   "map_local" otherwise. IDENTITY_POSE is used (no entity-level transform).
- *   The <offset> affine (if present) is baked into vertex positions.
+ *   The <offset> [ODR §8.5] is NOT baked into vertices; it is published as a
+ *   FrameTransform(parent="global", child="proj_frame") by the frame transform
+ *   converter (mirroring the OSI converter), keeping vertices un-baked.
  *
  * CACHING: The map is static per [OMEGA] convention (single message on the
  * ground_truth_map topic). Results are cached by map_reference + xml_hash + settings hash.
@@ -106,7 +108,7 @@ import {
 import type { RgbaColor } from "../../config/constants";
 import { PROJ_FRAME_ID } from "../../config/projFrame";
 import type { GeoOffset, GeoReference } from "../../utils/georef";
-import { applyGeoOffsetToPoints, parseGeoReference } from "../../utils/georef";
+import { parseGeoReference } from "../../utils/georef";
 import type { MapAsamOpenDrive } from "../../utils/proto";
 import type { PartialSceneEntity, Point3 } from "../../utils/scene";
 import { IDENTITY_POSE, makeSceneEntity } from "../../utils/scene";
@@ -426,26 +428,12 @@ function generateMapEntities(
       entities.push(mapInfoEntity);
     }
 
-    // [ODR §8.5] Post-process: update frame_id and apply geo-offset to all geometry
+    // [ODR §8.5] Publish geometry un-baked in "proj_frame" (CRS world). The
+    // <offset> is NOT applied to vertices here; it is emitted separately as a
+    // FrameTransform(parent="global", child="proj_frame") by the frame
+    // transform converter, mirroring the OSI converter's proj_frame_offset.
     for (const entity of entities) {
       entity.frame_id = frameId;
-      if (geoOffset) {
-        if (entity.triangles) {
-          for (const tri of entity.triangles) {
-            applyGeoOffsetToPoints(tri.points, geoOffset);
-          }
-        }
-        if (entity.lines) {
-          for (const line of entity.lines) {
-            applyGeoOffsetToPoints(line.points, geoOffset);
-          }
-        }
-        if (entity.cubes) {
-          for (const cube of entity.cubes) {
-            applyGeoOffsetToPoints([cube.pose.position], geoOffset);
-          }
-        }
-      }
     }
 
     laneTypeMap.delete();
