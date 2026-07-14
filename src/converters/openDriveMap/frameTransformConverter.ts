@@ -1,7 +1,8 @@
 /**
- * ASAM OpenDRIVE → foxglove.FrameTransform converter.
+ * ASAM OpenDRIVE → foxglove.FrameTransforms converter.
  *
- * Publishes a FrameTransform(parent="global", child="proj_frame") derived from
+ * Publishes FrameTransforms containing
+ * FrameTransform(parent="global", child="proj_frame") derived from
  * the OpenDRIVE <offset> element [ODR §8.5], placing "proj_frame" as a child of
  * the root "global" frame.
  *
@@ -15,7 +16,7 @@
  * and an offset relative to "global" is known.
  */
 
-import type { FrameTransform } from "@foxglove/schemas";
+import type { FrameTransforms } from "@foxglove/schemas";
 import type {
   Immutable,
   MessageConverterContext,
@@ -31,7 +32,7 @@ export function registerOpenDriveFrameTransformConverter(): (
   event: Immutable<MessageEvent<MapAsamOpenDrive>>,
   globalVariables?: Readonly<Record<string, VariableValue>>,
   context?: MessageConverterContext,
-) => FrameTransform | undefined {
+) => FrameTransforms | undefined {
   return (msg, event) => {
     const xmlContent = msg.open_drive_xml_content;
     if (!xmlContent) {
@@ -46,6 +47,8 @@ export function registerOpenDriveFrameTransformConverter(): (
       return undefined;
     }
 
-    return buildProjFrameTransform(geoRef.offset, event.receiveTime);
+    return {
+      transforms: [buildProjFrameTransform(geoRef.offset, event.receiveTime)],
+    };
   };
 }

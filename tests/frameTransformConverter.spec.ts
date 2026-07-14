@@ -27,12 +27,15 @@ describe("registerOpenDriveFrameTransformConverter", () => {
     expect(typeof registerOpenDriveFrameTransformConverter()).toBe("function");
   });
 
-  it("emits a global → proj_frame transform when geoReference and offset are present", () => {
+  it("emits global → proj_frame in FrameTransforms when geoReference and offset are present", () => {
     const converter = registerOpenDriveFrameTransformConverter();
     const msg = { open_drive_xml_content: XML_WITH_OFFSET } as MapAsamOpenDrive;
 
-    const transform = converter(msg, makeEvent(msg));
+    const frameTransforms = converter(msg, makeEvent(msg));
+    const transform = frameTransforms?.transforms[0];
 
+    expect(frameTransforms).toBeDefined();
+    expect(frameTransforms?.transforms).toHaveLength(1);
     expect(transform).toBeDefined();
     expect(transform!.parent_frame_id).toBe("global");
     expect(transform!.child_frame_id).toBe("proj_frame");
