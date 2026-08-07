@@ -75,7 +75,7 @@ jobs:
           }
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
 
@@ -100,7 +100,7 @@ jobs:
           tar -xzf scancode-toolkit.tar.gz -C scancode-toolkit --strip-components=1
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: 3.12
 
