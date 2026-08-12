@@ -43,7 +43,7 @@
   "devDependencies": {
     "@foxglove/schemas": "^1.9.0",
     "@lichtblick/eslint-plugin": "^2.0.8",
-    "@lichtblick/suite": "^1.28.0",
+    "@lichtblick/suite": "^1.28.1",
     "@types/jest": "^30.0.0",
     "@types/react": "18.3.23",
     "@types/react-dom": "18.3.7",
