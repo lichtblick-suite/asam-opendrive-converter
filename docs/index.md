@@ -39,10 +39,10 @@ Geometry computation is handled by [libOpenDRIVE](https://github.com/lichtblick-
 # Install from source (requires emsdk for WASM build)
 git clone --recurse-submodules https://github.com/lichtblick-suite/asam-opendrive-converter.git
 cd asam-opendrive-converter
-npm install
-npm run build:wasm   # compile C++ → WASM (one-time)
-npm run build        # bundle extension
-npm run local-install
+yarn install
+yarn build:wasm   # compile C++ → WASM (one-time)
+yarn build        # bundle extension
+yarn local-install
 ```
 
 Then open Lichtblick, load an OMEGA PRIME MCAP file, and add a 3D panel. The OpenDRIVE map channel will be automatically converted and rendered.

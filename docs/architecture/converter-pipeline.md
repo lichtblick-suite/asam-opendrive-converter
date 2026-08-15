@@ -47,7 +47,7 @@ The TypeScript adapter converts WASM output into Foxglove primitives:
 - road object meshes → `TriangleListPrimitive`
 - road signal meshes → `TriangleListPrimitive`
 
-Feature-specific builders group mesh chunks into `SceneEntity` objects with stable IDs, metadata, `frame_id="global"`, and persistent lifetimes.
+Feature-specific builders group mesh chunks into `SceneEntity` objects with stable IDs, metadata, appropriate `frame_id` (`"proj_frame"` when georeferenced, `"map_local"` otherwise), and persistent lifetimes.
 
 When panel settings change, the converter emits `SceneEntityDeletionType.ALL` before returning the newly selected layers.
 

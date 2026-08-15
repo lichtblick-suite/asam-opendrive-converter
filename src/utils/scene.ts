@@ -20,8 +20,8 @@
  * ZERO_TIME lifetime: {sec:0, nsec:0} means the entity persists until
  * replaced or deleted — correct for static map data per [OMEGA] convention.
  *
- * frame_locked=true: Entity follows frame transforms. Combined with
- * frame_id="global", this anchors the map in the world frame.
+ * frame_locked=true: Entity follows frame transforms. Combined with the
+ * appropriate frame_id, this anchors the map in the correct coordinate space.
  * ============================================================================
  */
 import type { Time } from "@foxglove/schemas";

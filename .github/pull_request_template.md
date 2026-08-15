@@ -8,8 +8,8 @@
 
 ## Checklist
 
-- [ ] Tests pass (`npm test`)
-- [ ] Linting passes (`npm run lint:ci`)
-- [ ] Type-check passes (`npm run typecheck`)
-- [ ] Build succeeds (`npm run build`)
+- [ ] Tests pass (`yarn test`)
+- [ ] Linting passes (`yarn lint:ci`)
+- [ ] Type-check passes (`yarn typecheck`)
+- [ ] Build succeeds (`yarn build`)
 - [ ] Documentation updated (if applicable)

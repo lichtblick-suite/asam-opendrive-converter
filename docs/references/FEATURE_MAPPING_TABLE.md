@@ -107,10 +107,10 @@ This document maps OpenDRIVE features across four layers:
 
 | # | Feature | ODR Standard | libOpenDRIVE C++ | This Converter (WASM adapter) | Foxglove Output | Status | Notes |
 |---|---------|-------------|-----------------|-------------------------------|-----------------|--------|-------|
-| 8.1 | **Inertial frame** | [ODR §8.2] x=East, y=North, z=Up | Native output frame | Used directly | `frame_id="global"` | ✅ | |
+| 8.1 | **Inertial frame** | [ODR §8.2] x=East, y=North, z=Up | Native output frame | Used directly | `frame_id="proj_frame"` or `"map_local"` | ✅ | |
 | 8.2 | **s/t/h frame** | [ODR §8.3] curvilinear coordinates | Internal evaluation frame | Consumed inside libOpenDRIVE | Absolute mesh coordinates | ✅ | |
-| 8.3 | **geoReference** | [ODR §8.5] PROJ string | Parsed by libOpenDRIVE | Original coordinates preserved; no extra projection in adapter | Absolute mesh coordinates | ⚠️ | Preserved, not reprojected |
-| 8.4 | **Header offset** | [ODR §8.5] `<offset>` | Available in map data | Adapter does not apply extra post-transform | Absolute mesh coordinates | ⚠️ | No additional adapter transform |
+| 8.3 | **geoReference** | [ODR §8.5] PROJ string | Parsed by libOpenDRIVE | Parsed from XML; when present, entities use `frame_id="proj_frame"` | Enables alignment with OSI converter | ✅ | Determines frame selection |
+| 8.4 | **Header offset** | [ODR §8.5] `<offset>` | Available in map data | Parsed from XML; affine transform applied to all geometry vertices | CRS world coordinates | ✅ | Applied per ODR §8.5 formula |
 | 8.5 | **Map centering** | Visualization option | `center_map` flag exists | Converter intentionally passes `false` | — | ❌ | Original coordinates preserved |
 
 ---
@@ -121,7 +121,7 @@ This document maps OpenDRIVE features across four layers:
 |---|---------|----------------|-------------|--------|
 | 9.1 | **SceneUpdate** | `{ deletions, entities }` | Uses `SceneEntityDeletionType.ALL` when settings change | `sceneUpdateConverter.ts` |
 | 9.2 | **SceneEntity.id** | Stable upsert keys using dot notation mirroring XODR hierarchy | Lane: `road.{roadId}.lanesection.{s0}.lane.{laneId}`; boundary: `road.{roadId}.lanesection.{s0}.lane.{laneId}.boundary`; marks: `road.{roadId}.roadmark.{chunk}`; objects: `road.{roadId}.object.{objectId}`; signals: `road.{roadId}.signal.{signalId}` | `sceneUpdateConverter.ts` |
-| 9.3 | **frame_id** | `"global"` | OpenDRIVE inertial frame maps directly to Foxglove world coordinates | `constants.ts`, `scene.ts` |
+| 9.3 | **frame_id** | `"proj_frame"` or `"map_local"` | `"proj_frame"` when `<geoReference>` present (shared convention with OSI converter); `"map_local"` when absent (local Cartesian per spec) | `constants.ts`, `projFrame.ts`, `georef.ts` |
 | 9.4 | **lifetime** | `{sec:0, nsec:0}` | Persistent until replaced or deleted | `scene.ts` |
 | 9.5 | **frame_locked** | `true` | Anchors entities to the selected frame | `scene.ts` |
 | 9.6 | **timestamp** | MCAP `receiveTime` | Shared across all entities in one update | `sceneUpdateConverter.ts` |
